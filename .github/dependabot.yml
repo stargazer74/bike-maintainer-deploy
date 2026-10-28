@@ -1,0 +1,14 @@
+version: 2
+updates:
+  # Third-party images in the compose files (mariadb, phpmyadmin). The app's own images follow BM_VERSION and are
+  # released from the backend/frontend repos, so they are ignored here.
+  - package-ecosystem: docker-compose
+    directories: [ /portal, /household ]
+    schedule:
+      interval: weekly
+    ignore:
+      - dependency-name: ghcr.io/stargazer74/bike-maintainer-backend
+      - dependency-name: ghcr.io/stargazer74/bike-maintainer-frontend
+      # Stay on the current major versions (mariadb:11, phpmyadmin:5); major upgrades are a deliberate decision.
+      - dependency-name: '*'
+        update-types: [ version-update:semver-major ]
