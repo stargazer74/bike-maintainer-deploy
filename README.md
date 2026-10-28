@@ -26,8 +26,10 @@ Backend und Frontend werden gemeinsam mit derselben Versionsnummer (SemVer) ver�
 
 Images entstehen nur bei Releases, nicht bei jedem Merge.
 
-Die Compose-Dateien ziehen `${BM_VERSION:-1}`: ohne Angabe die neueste `1.x`-Release, also Updates ohne Breaking
-Changes. Mit `BM_VERSION=1.2.3` in der `.env` bleibt die Installation auf genau dieser Release.
+Die Compose-Dateien ziehen `${BM_VERSION:-0}`: ohne Angabe die neueste `0.x`-Release. Solange die Version mit `0`
+beginnt, ist das Projekt in der Anfangsphase, und jede Minor-Version (`0.1` → `0.2`) kann Breaking Changes
+enthalten. Mit `BM_VERSION=0.1.0` in der `.env` bleibt die Installation auf genau dieser Release. Ab `1.0.0` wird
+der Standard auf `1` umgestellt (neueste `1.x`, Updates ohne Breaking Changes).
 
 Die `compose.yaml` im Backend-Repo bleibt dort: Sie ist für die Entwicklung gedacht, baut das Backend aus dem
 Quellcode und wird von `./mvnw spring-boot:run` automatisch gestartet.

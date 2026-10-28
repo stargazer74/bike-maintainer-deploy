@@ -31,7 +31,7 @@ services:
     depends_on:
       - bm-mariadb
   bm-backend:
-    image: 'ghcr.io/stargazer74/bike-maintainer-backend:${BM_VERSION:-1}'
+    image: 'ghcr.io/stargazer74/bike-maintainer-backend:${BM_VERSION:-0}'
     restart: unless-stopped
     environment:
       - 'DB_HOST=bm-mariadb'
@@ -48,7 +48,7 @@ services:
       bm-mariadb:
         condition: service_healthy
   bm-frontend:
-    image: 'ghcr.io/stargazer74/bike-maintainer-frontend:${BM_VERSION:-1}'
+    image: 'ghcr.io/stargazer74/bike-maintainer-frontend:${BM_VERSION:-0}'
     restart: unless-stopped
     networks:
       - default
