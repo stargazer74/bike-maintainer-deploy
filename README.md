@@ -59,13 +59,13 @@ bleiben dabei erhalten.
 
 ## Portal hinter vorhandenem nginx-proxy-manager
 
-`portal/` bringt keinen eigenen Proxy mit und veröffentlicht keine Ports für die App. Frontend und Backend hängen
-zusätzlich im Docker-Netz des vorhandenen nginx-proxy-manager (`PROXY_NETWORK` in der `.env`) und sind dort über
-ihren Service-Namen erreichbar. Im nginx-proxy-manager ein Proxy-Host für die Domain:
+`portal/` bringt keinen eigenen Proxy mit und veröffentlicht keine Ports für die App. Nur das Frontend hängt
+zusätzlich im Docker-Netz des vorhandenen nginx-proxy-manager (`PROXY_NETWORK` in der `.env`) und ist dort als
+`bm-frontend` erreichbar; `/api/` leitet der Frontend-Container selbst ans Backend weiter. Im nginx-proxy-manager
+genügt ein Proxy-Host für die Domain:
 
-- Ziel: `http://bm-frontend:80`, SSL mit Let's Encrypt
-- Custom Location `/api`: `http://bm-backend:8080` – entfällt, sobald der Frontend-Container `/api`
-  selbst ans Backend weiterleitet (bike-maintainer-frontend#4)
+- Ziel: `http://bm-frontend:80`
+- SSL: Let's Encrypt, „Force SSL“ an
 
 Starten:
 

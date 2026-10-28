@@ -41,9 +41,6 @@ services:
       # is only applied while the admin has none. Compose refuses to start if either is missing.
       - 'BM_INITIAL_ADMIN_EMAIL=${BM_INITIAL_ADMIN_EMAIL:?set BM_INITIAL_ADMIN_EMAIL in .env}'
       - 'BM_INITIAL_ADMIN_PASSWORD=${BM_INITIAL_ADMIN_PASSWORD:?set BM_INITIAL_ADMIN_PASSWORD in .env}'
-    networks:
-      - default
-      - proxy
     depends_on:
       bm-mariadb:
         condition: service_healthy
@@ -59,8 +56,9 @@ services:
 volumes:
   mariadb-data:
 
-# No ports are published for the app: the existing nginx-proxy-manager on the host reaches the containers by service
-# name over this shared network (frontend: bm-frontend:80, backend: bm-backend:8080).
+# No ports are published for the app: the existing nginx-proxy-manager on the host reaches the frontend by service
+# name over this shared network (bm-frontend:80). The frontend's nginx forwards /api/ to bm-backend internally, so the
+# backend stays in the default network only.
 networks:
   proxy:
     external: true
