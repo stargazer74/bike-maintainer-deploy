@@ -25,6 +25,37 @@ in einem eigenen Verzeichnis mit `compose.yaml` und `.env.example`.
 | Verzeichnis | Betriebsart | TLS / Proxy |
 |---|---|---|
 | [`portal/`](portal/) | Portal mit Login (Internet) | vorhandener nginx-proxy-manager auf dem Host |
+| [`household/`](household/) | Haushalt ohne Login (nur Heimnetz) | keiner |
+
+## Selbst hosten im Heimnetz
+
+Der Haushaltsmodus ist für den privaten Betrieb zu Hause gedacht, z. B. auf einem Raspberry Pi. Es gibt keine
+Anmeldung: Beim Öffnen wählt jede Person im Haushalt ihr Profil und sieht ihre eigenen Fahrzeuge.
+
+> [!WARNING]
+> Die Profile haben **kein Passwort** – jeder, der die App erreicht, sieht alle Daten. Betreibe den Haushaltsmodus
+> nur im Heimnetz und richte **keine Portfreigabe im Router** ein. Für den Betrieb im Internet ist der Portalmodus
+> (`portal/`) da.
+
+Voraussetzung: ein Rechner mit Docker und Docker Compose (amd64 oder arm64, z. B. Raspberry Pi 4/5 mit 64-Bit-OS).
+
+1. Dateien herunterladen:
+   ```bash
+   mkdir bike-maintainer && cd bike-maintainer
+   curl -fsSLO https://raw.githubusercontent.com/stargazer74/bike-maintainer-deploy/main/household/compose.yaml
+   curl -fsSL -o .env https://raw.githubusercontent.com/stargazer74/bike-maintainer-deploy/main/household/.env.example
+   ```
+2. In `.env` ein Datenbank-Passwort setzen (`BM_DB_PASSWORD`, beliebiger langer Zufallswert, z. B. aus
+   `openssl rand -base64 24`). Optional mit `BM_PORT` den Port ändern.
+3. Starten:
+   ```bash
+   docker compose up -d
+   ```
+4. Im Browser `http://<rechner>:8080` öffnen. Die Person „Admin“ gibt es schon; sie lässt sich umbenennen, weitere
+   Personen kommen über „Person hinzufügen“ dazu.
+
+Aktualisieren: `docker compose pull && docker compose up -d`. Die Daten liegen im Docker-Volume `mariadb-data` und
+bleiben dabei erhalten.
 
 ## Portal hinter vorhandenem nginx-proxy-manager
 
@@ -36,7 +67,7 @@ ihren Service-Namen erreichbar. Im nginx-proxy-manager ein Proxy-Host für die D
 - Custom Location `/api`: `http://bm-backend:8080` – entfällt, sobald der Frontend-Container `/api`
   selbst ans Backend weiterleitet (bike-maintainer-frontend#4)
 
-## Starten
+Starten:
 
 ```bash
 cd portal
@@ -44,4 +75,5 @@ cp .env.example .env    # Werte eintragen
 docker compose up -d
 ```
 
-Es reicht, das jeweilige Verzeichnis herunterzuladen; ein Klonen des ganzen Repos ist nicht nötig.
+Für jede Variante reicht es, `compose.yaml` und `.env.example` aus dem jeweiligen Verzeichnis herunterzuladen; ein
+Klonen des ganzen Repos ist nicht nötig.
