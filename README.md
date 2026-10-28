@@ -23,8 +23,8 @@ Backend und Frontend werden gemeinsam mit derselben Versionsnummer (SemVer) verÃ
 | `1.2.3` | genau diese Release |
 | `1.2`, `1` | neueste Release mit dieser Minor- bzw. Major-Version |
 | `latest` | neueste Release |
-| `edge` | aktueller Stand von `main`, nicht freigegeben â€“ nur zum Testen |
-| `sha-<commit>` | ein bestimmter Build |
+
+Images entstehen nur bei Releases, nicht bei jedem Merge.
 
 Die Compose-Dateien ziehen `${BM_VERSION:-1}`: ohne Angabe die neueste `1.x`-Release, also Updates ohne Breaking
 Changes. Mit `BM_VERSION=1.2.3` in der `.env` bleibt die Installation auf genau dieser Release.
