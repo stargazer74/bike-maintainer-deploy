@@ -1,0 +1,65 @@
+services:
+  bm-mariadb:
+    image: 'mariadb:11'
+    restart: unless-stopped
+    environment:
+      - 'MARIADB_DATABASE=maintenance'
+      - 'MARIADB_USER=maintenance'
+      - 'MARIADB_PASSWORD=maintenance'
+      - 'MARIADB_ROOT_PASSWORD=root'
+    ports:
+      - '3306:3306'
+    volumes:
+      - 'mariadb-data:/var/lib/mysql'
+    healthcheck:
+      test: [ 'CMD', 'healthcheck.sh', '--connect', '--innodb_initialized' ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  bm-phpmyadmin:
+    image: 'phpmyadmin:5'
+    restart: unless-stopped
+    environment:
+      - 'PMA_HOST=bm-mariadb'
+      - 'PMA_USER=maintenance'
+      - 'PMA_PASSWORD=maintenance'
+    ports:
+      - '8081:80'
+    depends_on:
+      - bm-mariadb
+  bm-backend:
+    image: 'ghcr.io/stargazer74/bike-maintainer-backend:${BM_VERSION:-1}'
+    restart: unless-stopped
+    environment:
+      - 'DB_HOST=bm-mariadb'
+      - 'DB_PORT=3306'
+      - 'DB_NAME=maintenance'
+      - 'DB_USERNAME=maintenance'
+      - 'DB_PASSWORD=maintenance'
+      # Initial admin (owner of all vehicles from before user accounts). Set both in a .env file next to
+      # this file, not here (public repo). The email is only read when migration V4 runs; the password
+      # is only applied while the admin has none. Compose refuses to start if either is missing.
+      - 'BM_INITIAL_ADMIN_EMAIL=${BM_INITIAL_ADMIN_EMAIL:?set BM_INITIAL_ADMIN_EMAIL in .env}'
+      - 'BM_INITIAL_ADMIN_PASSWORD=${BM_INITIAL_ADMIN_PASSWORD:?set BM_INITIAL_ADMIN_PASSWORD in .env}'
+    depends_on:
+      bm-mariadb:
+        condition: service_healthy
+  bm-frontend:
+    image: 'ghcr.io/stargazer74/bike-maintainer-frontend:${BM_VERSION:-1}'
+    restart: unless-stopped
+    networks:
+      - default
+      - proxy
+    depends_on:
+      - bm-backend
+
+volumes:
+  mariadb-data:
+
+# No ports are published for the app: the existing nginx-proxy-manager on the host reaches the frontend by service
+# name over this shared network (bm-frontend:80). The frontend's nginx forwards /api/ to bm-backend internally, so the
+# backend stays in the default network only.
+networks:
+  proxy:
+    external: true
+    name: '${PROXY_NETWORK:?set PROXY_NETWORK in .env}'

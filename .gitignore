@@ -1,0 +1,7 @@
+### Local secrets (.env next to each compose.yaml) ###
+.env
+
+### IDEs / OS ###
+.idea/
+.vscode/
+.DS_Store
