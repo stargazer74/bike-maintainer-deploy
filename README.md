@@ -83,6 +83,19 @@ genügt ein Proxy-Host für die Domain:
 - Ziel: `http://bm-frontend:80`
 - SSL: Let's Encrypt, „Force SSL“ an
 
+Nach außen erreichbar ist nur das Frontend, und auch das nur über das Netz des nginx-proxy-manager. Die Datenbank
+veröffentlicht keinen Port, ihr Passwort (`BM_DB_PASSWORD`) steht in der `.env`. phpMyAdmin startet nur auf
+Wunsch und lauscht nur auf `127.0.0.1` (Docker würde einen veröffentlichten Port sonst an einer Host-Firewall wie
+`ufw` vorbei freigeben):
+
+```bash
+docker compose --profile tools up -d          # phpMyAdmin zusätzlich starten
+ssh -L 8081:127.0.0.1:8081 <server>           # vom eigenen Rechner aus, dann http://localhost:8081
+docker compose --profile tools stop bm-phpmyadmin
+```
+
+Anmeldung in phpMyAdmin als `maintenance` mit `BM_DB_PASSWORD`; es gibt kein Auto-Login.
+
 Starten:
 
 ```bash
