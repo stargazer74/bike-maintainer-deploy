@@ -79,10 +79,10 @@ bleiben dabei erhalten.
 
 `portal/` bringt keinen eigenen Proxy mit und veröffentlicht keine Ports für die App. Nur das Frontend hängt
 zusätzlich im Docker-Netz des vorhandenen nginx-proxy-manager (`PROXY_NETWORK` in der `.env`) und ist dort als
-`bm-frontend` erreichbar; `/api/` leitet der Frontend-Container selbst ans Backend weiter. Im nginx-proxy-manager
-genügt ein Proxy-Host für die Domain:
+`bike-maintainer-frontend` erreichbar; `/api/` leitet der Frontend-Container selbst ans Backend weiter. Im
+nginx-proxy-manager genügt ein Proxy-Host für die Domain:
 
-- Ziel: `http://bm-frontend:80`
+- Ziel: `http://bike-maintainer-frontend:80`
 - SSL: Let's Encrypt, „Force SSL“ an
 
 Nach außen erreichbar ist nur das Frontend, und auch das nur über das Netz des nginx-proxy-manager. Die Datenbank
@@ -93,7 +93,7 @@ Wunsch und lauscht nur auf `127.0.0.1` (Docker würde einen veröffentlichten Po
 ```bash
 docker compose --profile tools up -d          # phpMyAdmin zusätzlich starten
 ssh -L 8081:127.0.0.1:8081 <server>           # vom eigenen Rechner aus, dann http://localhost:8081
-docker compose --profile tools stop bm-phpmyadmin
+docker compose --profile tools stop bike-maintainer-phpmyadmin
 ```
 
 Anmeldung in phpMyAdmin als `maintenance` mit `BM_DB_PASSWORD`; es gibt kein Auto-Login.

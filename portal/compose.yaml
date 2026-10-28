@@ -1,7 +1,7 @@
 # Only the frontend is reachable, and only through the nginx-proxy-manager's network. The database publishes no port;
 # phpMyAdmin is optional (compose profile "tools") and listens on the host's loopback interface only.
 services:
-  bm-mariadb:
+  bike-maintainer-mariadb:
     image: 'mariadb:11'
     restart: unless-stopped
     environment:
@@ -20,21 +20,21 @@ services:
   # Only started with `docker compose --profile tools up -d`. Bound to 127.0.0.1 – Docker would otherwise publish the
   # port past a host firewall such as ufw. Reach it via SSH tunnel: ssh -L 8081:127.0.0.1:8081 <server>, then open
   # http://localhost:8081 and log in as "maintenance" with BM_DB_PASSWORD (no auto-login).
-  bm-phpmyadmin:
+  bike-maintainer-phpmyadmin:
     image: 'phpmyadmin:5'
     restart: unless-stopped
     profiles: [ 'tools' ]
     environment:
-      - 'PMA_HOST=bm-mariadb'
+      - 'PMA_HOST=bike-maintainer-mariadb'
     ports:
       - '127.0.0.1:8081:80'
     depends_on:
-      - bm-mariadb
-  bm-backend:
+      - bike-maintainer-mariadb
+  bike-maintainer-backend:
     image: 'ghcr.io/stargazer74/bike-maintainer-backend:${BM_VERSION:-0}'
     restart: unless-stopped
     environment:
-      - 'DB_HOST=bm-mariadb'
+      - 'DB_HOST=bike-maintainer-mariadb'
       - 'DB_PORT=3306'
       - 'DB_NAME=maintenance'
       - 'DB_USERNAME=maintenance'
@@ -45,23 +45,26 @@ services:
       - 'BM_INITIAL_ADMIN_EMAIL=${BM_INITIAL_ADMIN_EMAIL:?set BM_INITIAL_ADMIN_EMAIL in .env}'
       - 'BM_INITIAL_ADMIN_PASSWORD=${BM_INITIAL_ADMIN_PASSWORD:?set BM_INITIAL_ADMIN_PASSWORD in .env}'
     depends_on:
-      bm-mariadb:
+      bike-maintainer-mariadb:
         condition: service_healthy
-  bm-frontend:
+  bike-maintainer-frontend:
     image: 'ghcr.io/stargazer74/bike-maintainer-frontend:${BM_VERSION:-0}'
     restart: unless-stopped
+    environment:
+      # The frontend's nginx forwards /api to the backend inside the compose network.
+      - 'BACKEND_HOST=bike-maintainer-backend:8080'
     networks:
       - default
       - proxy
     depends_on:
-      - bm-backend
+      - bike-maintainer-backend
 
 volumes:
   mariadb-data:
 
 # No ports are published for the app: the existing nginx-proxy-manager on the host reaches the frontend by service
-# name over this shared network (bm-frontend:80). The frontend's nginx forwards /api/ to bm-backend internally, so the
-# backend stays in the default network only.
+# name over this shared network (bike-maintainer-frontend:80). The frontend's nginx forwards /api/ to
+# bike-maintainer-backend internally, so the backend stays in the default network only.
 networks:
   proxy:
     external: true
