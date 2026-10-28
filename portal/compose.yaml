@@ -1,3 +1,5 @@
+# Only the frontend is reachable, and only through the nginx-proxy-manager's network. The database publishes no port;
+# phpMyAdmin is optional (compose profile "tools") and listens on the host's loopback interface only.
 services:
   bm-mariadb:
     image: 'mariadb:11'
@@ -5,10 +7,9 @@ services:
     environment:
       - 'MARIADB_DATABASE=maintenance'
       - 'MARIADB_USER=maintenance'
-      - 'MARIADB_PASSWORD=maintenance'
-      - 'MARIADB_ROOT_PASSWORD=root'
-    ports:
-      - '3306:3306'
+      - 'MARIADB_PASSWORD=${BM_DB_PASSWORD:?set BM_DB_PASSWORD in .env}'
+      # Nobody needs root: the app and phpMyAdmin use the "maintenance" user.
+      - 'MARIADB_RANDOM_ROOT_PASSWORD=1'
     volumes:
       - 'mariadb-data:/var/lib/mysql'
     healthcheck:
@@ -16,26 +17,28 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+  # Only started with `docker compose --profile tools up -d`. Bound to 127.0.0.1 – Docker would otherwise publish the
+  # port past a host firewall such as ufw. Reach it via SSH tunnel: ssh -L 8081:127.0.0.1:8081 <server>, then open
+  # http://localhost:8081 and log in as "maintenance" with BM_DB_PASSWORD (no auto-login).
   bm-phpmyadmin:
     image: 'phpmyadmin:5'
     restart: unless-stopped
+    profiles: [ 'tools' ]
     environment:
       - 'PMA_HOST=bm-mariadb'
-      - 'PMA_USER=maintenance'
-      - 'PMA_PASSWORD=maintenance'
     ports:
-      - '8081:80'
+      - '127.0.0.1:8081:80'
     depends_on:
       - bm-mariadb
   bm-backend:
-    image: 'ghcr.io/stargazer74/bike-maintainer-backend:${BM_VERSION:-1}'
+    image: 'ghcr.io/stargazer74/bike-maintainer-backend:${BM_VERSION:-0}'
     restart: unless-stopped
     environment:
       - 'DB_HOST=bm-mariadb'
       - 'DB_PORT=3306'
       - 'DB_NAME=maintenance'
       - 'DB_USERNAME=maintenance'
-      - 'DB_PASSWORD=maintenance'
+      - 'DB_PASSWORD=${BM_DB_PASSWORD:?set BM_DB_PASSWORD in .env}'
       # Initial admin (owner of all vehicles from before user accounts). Set both in a .env file next to
       # this file, not here (public repo). The email is only read when migration V4 runs; the password
       # is only applied while the admin has none. Compose refuses to start if either is missing.
@@ -45,7 +48,7 @@ services:
       bm-mariadb:
         condition: service_healthy
   bm-frontend:
-    image: 'ghcr.io/stargazer74/bike-maintainer-frontend:${BM_VERSION:-1}'
+    image: 'ghcr.io/stargazer74/bike-maintainer-frontend:${BM_VERSION:-0}'
     restart: unless-stopped
     networks:
       - default
