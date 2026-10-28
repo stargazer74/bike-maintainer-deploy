@@ -32,6 +32,8 @@ services:
       - bike-maintainer-mariadb
   bike-maintainer-backend:
     image: 'ghcr.io/stargazer74/bike-maintainer-backend:${BM_VERSION:-0}'
+    # Fixed name instead of <project>-bike-maintainer-backend-1, e.g. for `docker logs`; only one installation per host.
+    container_name: 'bike-maintainer-backend'
     restart: unless-stopped
     environment:
       - 'DB_HOST=bike-maintainer-mariadb'
@@ -49,6 +51,8 @@ services:
         condition: service_healthy
   bike-maintainer-frontend:
     image: 'ghcr.io/stargazer74/bike-maintainer-frontend:${BM_VERSION:-0}'
+    # Fixed name instead of <project>-bike-maintainer-frontend-1, e.g. for `docker logs`; only one installation per host.
+    container_name: 'bike-maintainer-frontend'
     restart: unless-stopped
     environment:
       # The frontend's nginx forwards /api to the backend inside the compose network.
