@@ -46,6 +46,14 @@ services:
       # is only applied while the admin has none. Compose refuses to start if either is missing.
       - 'BM_INITIAL_ADMIN_EMAIL=${BM_INITIAL_ADMIN_EMAIL:?set BM_INITIAL_ADMIN_EMAIL in .env}'
       - 'BM_INITIAL_ADMIN_PASSWORD=${BM_INITIAL_ADMIN_PASSWORD:?set BM_INITIAL_ADMIN_PASSWORD in .env}'
+      # Registration emails and captcha (backend 0.3+). Secrets only in .env; compose refuses to start without them.
+      - 'SPRING_MAIL_HOST=${SPRING_MAIL_HOST:-smtp.ionos.de}'
+      - 'SPRING_MAIL_PORT=${SPRING_MAIL_PORT:-587}'
+      - 'SPRING_MAIL_USERNAME=${SPRING_MAIL_USERNAME:-noreply@bike-maintainer.de}'
+      - 'SPRING_MAIL_PASSWORD=${SPRING_MAIL_PASSWORD:?set SPRING_MAIL_PASSWORD in .env}'
+      - 'BM_MAIL_FROM=${BM_MAIL_FROM:-noreply@bike-maintainer.de}'
+      - 'BM_PUBLIC_URL=${BM_PUBLIC_URL:-https://app.bike-maintainer.de}'
+      - 'BM_ALTCHA_HMAC_KEY=${BM_ALTCHA_HMAC_KEY:?set BM_ALTCHA_HMAC_KEY in .env}'
     depends_on:
       bike-maintainer-mariadb:
         condition: service_healthy

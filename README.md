@@ -89,6 +89,12 @@ nginx-proxy-manager genügt ein Proxy-Host für die Domain:
 - Ziel: `http://bike-maintainer-frontend:80`
 - SSL: Let's Encrypt, „Force SSL“ an
 
+**Registrierung (ab Backend 0.3):** Neue Nutzer registrieren sich selbst und bestätigen ihre E-Mail-Adresse per
+Link. Dafür braucht die `.env` das SMTP-Passwort von `noreply@bike-maintainer.de` (`SPRING_MAIL_PASSWORD`) und
+einen geheimen Schlüssel für das Captcha (`BM_ALTCHA_HMAC_KEY`, z. B. `openssl rand -hex 32`); ohne beide startet
+weder Compose noch das Backend. `BM_PUBLIC_URL` ist die Adresse der App in den Links der Mails (Standard
+`https://app.bike-maintainer.de`). Höchstens 100 Mails pro Tag; unbestätigte Konten werden nach 7 Tagen gelöscht.
+
 Nach außen erreichbar ist nur das Frontend, und auch das nur über das Netz des nginx-proxy-manager. Die Datenbank
 veröffentlicht keinen Port, ihr Passwort (`BM_DB_PASSWORD`) steht in der `.env`. phpMyAdmin startet nur auf
 Wunsch und lauscht nur auf `127.0.0.1` (Docker würde einen veröffentlichten Port sonst an einer Host-Firewall wie
