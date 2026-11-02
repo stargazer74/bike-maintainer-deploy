@@ -3,6 +3,7 @@
 services:
   bike-maintainer-mariadb:
     image: 'mariadb:11'
+    container_name: 'bike-maintainer-mariadb'
     restart: unless-stopped
     environment:
       - 'MARIADB_DATABASE=maintenance'
@@ -22,6 +23,7 @@ services:
   # http://localhost:8081 and log in as "maintenance" with BM_DB_PASSWORD (no auto-login).
   bike-maintainer-phpmyadmin:
     image: 'phpmyadmin:5'
+    container_name: 'bike-maintainer-phpmyadmin'
     restart: unless-stopped
     profiles: [ 'tools' ]
     environment:

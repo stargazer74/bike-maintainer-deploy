@@ -1,0 +1,135 @@
+# Complete Bike Maintainer stack for local development, in portal mode: app (backend + frontend), website
+# (WordPress), one MariaDB with both databases, Mailpit for all mail, phpMyAdmin.
+#
+# Unlike portal/ and household/, this stack BUILDS the images from the sibling repositories, so it runs your current
+# code – including unreleased changes. The repositories must be checked out side by side:
+#   bike-maintainer-api/  bike-maintainer-backend/  bike-maintainer-frontend/  bike-maintainer-portal/
+#   bike-maintainer-deploy/dev/   <- this file
+#
+#   cp .env.example .env
+#   ./build.sh                     # API spec, backend jar, frontend API client, then the images
+#   docker compose up -d
+#   docker compose exec -u www-data bike-maintainer-website bm-setup    # once: install WordPress
+#
+# App: http://localhost:${APP_PORT:-8100}  ·  Website: http://localhost:${WEBSITE_PORT:-8200}
+# Mailpit: http://localhost:${MAILPIT_PORT:-8026}  ·  phpMyAdmin: http://localhost:${PHPMYADMIN_PORT:-8101}
+#
+# Never use this for operation: fixed development secrets, debug output, everything on one machine.
+name: bike-maintainer-dev
+
+services:
+  bike-maintainer-mariadb:
+    image: 'mariadb:11'
+    container_name: 'bike-maintainer-dev-mariadb'
+    environment:
+      - 'MARIADB_DATABASE=maintenance'
+      - 'MARIADB_USER=maintenance'
+      - 'MARIADB_PASSWORD=${BM_DB_PASSWORD:?set BM_DB_PASSWORD in .env}'
+      - 'MARIADB_RANDOM_ROOT_PASSWORD=1'
+      # Read by mariadb-init/10-website.sh: second database and user for WordPress.
+      - 'BM_WEBSITE_DB_PASSWORD=${BM_WEBSITE_DB_PASSWORD:?set BM_WEBSITE_DB_PASSWORD in .env}'
+    volumes:
+      - 'mariadb-data:/var/lib/mysql'
+      # Runs only when the data directory is empty, i.e. on the very first start.
+      - './mariadb-init:/docker-entrypoint-initdb.d:ro'
+    healthcheck:
+      test: [ 'CMD', 'healthcheck.sh', '--connect', '--innodb_initialized' ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  bike-maintainer-phpmyadmin:
+    image: 'phpmyadmin:5'
+    container_name: 'bike-maintainer-dev-phpmyadmin'
+    environment:
+      - 'PMA_HOST=bike-maintainer-mariadb'
+    ports:
+      - '127.0.0.1:${PHPMYADMIN_PORT:-8101}:80'
+    depends_on:
+      - bike-maintainer-mariadb
+
+  # Catches every mail of app and website. The backend insists on STARTTLS and SMTP login (as against IONOS), so
+  # Mailpit offers STARTTLS with a self-signed certificate and accepts any login – or none, for WordPress.
+  bike-maintainer-mailpit:
+    image: 'axllent/mailpit:v1'
+    container_name: 'bike-maintainer-dev-mailpit'
+    environment:
+      - 'MP_SMTP_TLS_CERT=sans:bike-maintainer-mailpit'
+      - 'MP_SMTP_TLS_KEY=sans:bike-maintainer-mailpit'
+      - 'MP_SMTP_AUTH_ACCEPT_ANY=1'
+    ports:
+      - '127.0.0.1:${MAILPIT_PORT:-8026}:8025'
+
+  bike-maintainer-backend:
+    # Dockerfile copies target/*.jar – build.sh runs ./mvnw package first.
+    build: '../../bike-maintainer-backend'
+    image: 'bike-maintainer-dev/backend'
+    container_name: 'bike-maintainer-dev-backend'
+    environment:
+      - 'BM_MODE=portal'
+      - 'DB_HOST=bike-maintainer-mariadb'
+      - 'DB_PORT=3306'
+      - 'DB_NAME=maintenance'
+      - 'DB_USERNAME=maintenance'
+      - 'DB_PASSWORD=${BM_DB_PASSWORD:?set BM_DB_PASSWORD in .env}'
+      - 'BM_INITIAL_ADMIN_EMAIL=${BM_INITIAL_ADMIN_EMAIL:-admin@example.org}'
+      - 'BM_INITIAL_ADMIN_PASSWORD=${BM_INITIAL_ADMIN_PASSWORD:?set BM_INITIAL_ADMIN_PASSWORD in .env}'
+      - 'SPRING_MAIL_HOST=bike-maintainer-mailpit'
+      - 'SPRING_MAIL_PORT=1025'
+      - 'SPRING_MAIL_USERNAME=dev'
+      - 'SPRING_MAIL_PASSWORD=dev'
+      # Trust Mailpit's self-signed certificate; everything else about mail is as in operation.
+      - 'SPRING_APPLICATION_JSON={"spring":{"mail":{"properties":{"mail.smtp.ssl.trust":"bike-maintainer-mailpit"}}}}'
+      - 'BM_MAIL_FROM=noreply@bike-maintainer.de'
+      - 'BM_PUBLIC_URL=http://localhost:${APP_PORT:-8100}'
+      # Public development key, never for operation.
+      - 'BM_ALTCHA_HMAC_KEY=local-development-key-not-for-production'
+    depends_on:
+      bike-maintainer-mariadb:
+        condition: service_healthy
+      bike-maintainer-mailpit:
+        condition: service_started
+
+  bike-maintainer-frontend:
+    # Needs src/app/api-client in the build context – build.sh runs npm run generate:api first.
+    build: '../../bike-maintainer-frontend'
+    image: 'bike-maintainer-dev/frontend'
+    container_name: 'bike-maintainer-dev-frontend'
+    environment:
+      - 'BACKEND_HOST=bike-maintainer-backend:8080'
+    ports:
+      - '127.0.0.1:${APP_PORT:-8100}:80'
+    depends_on:
+      - bike-maintainer-backend
+
+  # Website as in operation: own code from the image, WordPress updates itself inside the volume. For working on the
+  # theme with live reload use compose.yaml in bike-maintainer-portal instead.
+  bike-maintainer-website:
+    build: '../../bike-maintainer-portal'
+    image: 'bike-maintainer-dev/website'
+    container_name: 'bike-maintainer-dev-website'
+    environment:
+      - 'WORDPRESS_DB_HOST=bike-maintainer-mariadb'
+      - 'WORDPRESS_DB_NAME=wordpress'
+      - 'WORDPRESS_DB_USER=wordpress'
+      - 'WORDPRESS_DB_PASSWORD=${BM_WEBSITE_DB_PASSWORD:?set BM_WEBSITE_DB_PASSWORD in .env}'
+      - 'WORDPRESS_DEBUG=1'
+      - 'BM_SMTP_HOST=bike-maintainer-mailpit'
+      - 'BM_SMTP_PORT=1025'
+      - 'BM_SMTP_FROM=noreply@bike-maintainer.de'
+      # For bm-setup (first installation).
+      - 'BM_SITE_URL=http://localhost:${WEBSITE_PORT:-8200}'
+      - 'BM_ADMIN_USER=${BM_WEBSITE_ADMIN_USER:-admin}'
+      - 'BM_ADMIN_EMAIL=${BM_WEBSITE_ADMIN_EMAIL:-admin@example.org}'
+      - 'BM_ADMIN_PASSWORD=${BM_WEBSITE_ADMIN_PASSWORD:?set BM_WEBSITE_ADMIN_PASSWORD in .env}'
+    volumes:
+      - 'website-data:/var/www/html'
+    ports:
+      - '127.0.0.1:${WEBSITE_PORT:-8200}:80'
+    depends_on:
+      bike-maintainer-mariadb:
+        condition: service_healthy
+
+volumes:
+  mariadb-data:
+  website-data:

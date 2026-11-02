@@ -3,6 +3,7 @@
 services:
   bike-maintainer-mariadb:
     image: 'mariadb:11'
+    container_name: 'bike-maintainer-mariadb'
     restart: unless-stopped
     environment:
       - 'MARIADB_DATABASE=maintenance'

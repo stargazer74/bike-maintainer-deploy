@@ -10,6 +10,7 @@ Der Code liegt in den anderen Repos:
 | [bike-maintainer-api](https://github.com/stargazer74/bike-maintainer-api) | OpenAPI-Spezifikation |
 | [bike-maintainer-backend](https://github.com/stargazer74/bike-maintainer-backend) | Spring-Boot-Backend, Image `ghcr.io/stargazer74/bike-maintainer-backend` |
 | [bike-maintainer-frontend](https://github.com/stargazer74/bike-maintainer-frontend) | Angular-Frontend (nginx), Image `ghcr.io/stargazer74/bike-maintainer-frontend` |
+| [bike-maintainer-portal](https://github.com/stargazer74/bike-maintainer-portal) | Website des Portals (WordPress), Image `ghcr.io/stargazer74/bike-maintainer-portal` |
 
 Die Images gibt es für `linux/amd64` und `linux/arm64` unter demselben Namen; Docker zieht automatisch die passende
 Variante. Jede Compose-Datei läuft also unverändert auf PC, Server und Raspberry Pi.
@@ -36,9 +37,9 @@ Quellcode und wird von `./mvnw spring-boot:run` automatisch gestartet.
 
 ## Varianten
 
-Backend und Frontend laufen in allen Varianten unter festen Container-Namen (`bike-maintainer-backend`,
-`bike-maintainer-frontend`), z. B. für `docker logs bike-maintainer-backend`. Deshalb lässt sich pro Rechner nur eine
-Installation betreiben.
+Alle Container laufen in allen Varianten unter festen Namen statt `<projekt>-<dienst>-1`: `bike-maintainer-backend`,
+`bike-maintainer-frontend`, `bike-maintainer-mariadb` und im Portal `bike-maintainer-phpmyadmin`, z. B. für
+`docker logs bike-maintainer-backend`. Deshalb lässt sich pro Rechner nur eine Installation betreiben.
 
 Die Varianten unterscheiden sich nach Betriebsart und danach, wer TLS übernimmt – nicht nach Architektur. Jede liegt
 in einem eigenen Verzeichnis mit `compose.yaml` und `.env.example`.
@@ -118,3 +119,42 @@ docker compose up -d
 
 Für jede Variante reicht es, `compose.yaml` und `.env.example` aus dem jeweiligen Verzeichnis herunterzuladen; ein
 Klonen des ganzen Repos ist nicht nötig.
+
+## Lokale Entwicklung: kompletter Stack (`dev/`)
+
+Für die Entwicklung gibt es in `dev/` den **ganzen** Stack im Portal-Modus auf einem Rechner: Backend, Frontend,
+Website (WordPress), eine MariaDB mit beiden Datenbanken, Mailpit für alle Mails und phpMyAdmin. Anders als `portal/`
+und `household/` **baut** `dev/` die Images aus den Nachbar-Repos – so läuft der aktuelle Code-Stand zusammen, auch
+Unveröffentlichtes. Nur für die Entwicklung, nie für den Betrieb (feste Entwicklungs-Secrets, Debug-Ausgaben).
+
+Voraussetzung: alle Repos nebeneinander ausgecheckt, dazu Java 25, Maven, Node 24 und Docker.
+
+```
+bike-maintainer-api/  bike-maintainer-backend/  bike-maintainer-frontend/  bike-maintainer-portal/  bike-maintainer-deploy/
+```
+
+```bash
+cd dev
+cp .env.example .env
+./build.sh                    # API-Spec installieren, Backend-JAR, Frontend-API-Client, dann alle Images
+docker compose up -d
+docker compose exec -u www-data bike-maintainer-website bm-setup    # einmalig: WordPress einrichten
+```
+
+| Was | Adresse | Zugang |
+|---|---|---|
+| App | <http://localhost:8100> | Initial-Admin aus `.env` (`BM_INITIAL_ADMIN_*`) oder registrieren |
+| Website | <http://localhost:8200> | Admin unter `/wp-admin` aus `.env` (`BM_WEBSITE_ADMIN_*`) |
+| Mailpit | <http://localhost:8026> | alle Mails von App und Website |
+| phpMyAdmin | <http://localhost:8101> | `maintenance` / `BM_DB_PASSWORD` bzw. `wordpress` / `BM_WEBSITE_DB_PASSWORD` |
+
+- Nach Änderungen in einem Repo: `./build.sh && docker compose up -d`.
+- Die Website-Datenbank `wordpress` legt `dev/mariadb-init/10-website.sh` beim allerersten Start an, mit eigenem
+  Nutzer ohne Rechte auf die App-Daten (so wie für den Portal-Betrieb geplant). Die Datei darf nicht ausführbar sein:
+  Der MariaDB-Entrypoint bindet nur nicht ausführbare Skripte ein und stellt nur dann `docker_process_sql` bereit.
+- Das Backend verlangt beim Mailversand STARTTLS und Anmeldung wie gegen IONOS; Mailpit bietet dazu STARTTLS mit
+  selbst signiertem Zertifikat und nimmt jede Anmeldung an.
+- Container heißen `bike-maintainer-dev-*` und nutzen eigene Ports, damit sie nicht mit einer `portal/`-Installation
+  oder den Dev-Setups in den einzelnen Repos (Backend `8090`, Website `8095`) kollidieren.
+- Für die Arbeit am Website-Theme mit sofort sichtbaren Änderungen eignet sich `compose.yaml` im Portal-Repo besser.
+- Alles zurücksetzen: `docker compose down -v`.
