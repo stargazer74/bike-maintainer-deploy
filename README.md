@@ -36,9 +36,9 @@ Quellcode und wird von `./mvnw spring-boot:run` automatisch gestartet.
 
 ## Varianten
 
-Backend und Frontend laufen in allen Varianten unter festen Container-Namen (`bike-maintainer-backend`,
-`bike-maintainer-frontend`), z. B. für `docker logs bike-maintainer-backend`. Deshalb lässt sich pro Rechner nur eine
-Installation betreiben.
+Alle Container laufen in allen Varianten unter festen Namen statt `<projekt>-<dienst>-1`: `bike-maintainer-backend`,
+`bike-maintainer-frontend`, `bike-maintainer-mariadb` und im Portal `bike-maintainer-phpmyadmin`, z. B. für
+`docker logs bike-maintainer-backend`. Deshalb lässt sich pro Rechner nur eine Installation betreiben.
 
 Die Varianten unterscheiden sich nach Betriebsart und danach, wer TLS übernimmt – nicht nach Architektur. Jede liegt
 in einem eigenen Verzeichnis mit `compose.yaml` und `.env.example`.
