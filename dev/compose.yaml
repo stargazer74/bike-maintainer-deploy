@@ -119,6 +119,8 @@ services:
       - "WORDPRESS_CONFIG_EXTRA=define( 'WP_DEVELOPMENT_MODE', 'theme' );"
       # Target of the "Zur App" links on the website.
       - 'BM_APP_URL=http://localhost:${APP_PORT:-8100}'
+      # ALTCHA on registration and lost password of the website/forum; public development key, never for operation.
+      - 'BM_ALTCHA_HMAC_KEY=local-development-key-not-for-production'
       - 'BM_SMTP_HOST=bike-maintainer-mailpit'
       - 'BM_SMTP_PORT=1025'
       - 'BM_SMTP_FROM=noreply@bike-maintainer.de'
