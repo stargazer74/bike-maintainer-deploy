@@ -148,7 +148,12 @@ docker compose exec -u www-data bike-maintainer-website bm-setup    # einmalig: 
 | Mailpit | <http://localhost:8026> | alle Mails von App und Website |
 | phpMyAdmin | <http://localhost:8101> | `maintenance` / `BM_DB_PASSWORD` bzw. `wordpress` / `BM_WEBSITE_DB_PASSWORD` |
 
-- Nach Änderungen in einem Repo: `./build.sh && docker compose up -d`.
+- Der Stack zeigt den Stand vom **letzten Build**, nicht den ausgecheckten: Nach Änderungen in einem Repo
+  `./build.sh && docker compose up -d` (nur die Website: `docker compose build bike-maintainer-website`). Ein Neustart
+  des Containers allein baut nichts neu. Die Website läuft im WordPress-Entwicklungsmodus `theme`, damit neue Patterns
+  und `theme.json` nach dem Neubau sofort gelten.
+- Die Startseite verweist auf das Landing-Page-Pattern. Wird sie einmal im Editor gespeichert, steht der Inhalt fest
+  in der Seite, und Änderungen an den Pattern-Dateien kommen dort nicht mehr an.
 - Die Website-Datenbank `wordpress` legt `dev/mariadb-init/10-website.sh` beim allerersten Start an, mit eigenem
   Nutzer ohne Rechte auf die App-Daten (so wie für den Portal-Betrieb geplant). Die Datei darf nicht ausführbar sein:
   Der MariaDB-Entrypoint bindet nur nicht ausführbare Skripte ein und stellt nur dann `docker_process_sql` bereit.
