@@ -114,6 +114,11 @@ services:
       - 'WORDPRESS_DB_USER=wordpress'
       - 'WORDPRESS_DB_PASSWORD=${BM_WEBSITE_DB_PASSWORD:?set BM_WEBSITE_DB_PASSWORD in .env}'
       - 'WORDPRESS_DEBUG=1'
+      # Read patterns and theme.json fresh on every request; WordPress otherwise caches them per theme version, which
+      # stays X.Y.Z-SNAPSHOT between releases, so a rebuilt image would still show the old patterns.
+      - "WORDPRESS_CONFIG_EXTRA=define( 'WP_DEVELOPMENT_MODE', 'theme' );"
+      # Target of the "Zur App" links on the website.
+      - 'BM_APP_URL=http://localhost:${APP_PORT:-8100}'
       - 'BM_SMTP_HOST=bike-maintainer-mailpit'
       - 'BM_SMTP_PORT=1025'
       - 'BM_SMTP_FROM=noreply@bike-maintainer.de'
