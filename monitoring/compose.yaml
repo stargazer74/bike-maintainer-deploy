@@ -1,0 +1,147 @@
+# Monitoring of the portal operation (portal/): Grafana Alloy collects logs and metrics, Prometheus and Loki store
+# them, Grafana shows dashboards and sends alerts by mail. Runs independently of portal/, so it keeps reporting while
+# the portal is down or restarting. No ports are published: Grafana is reached through the nginx-proxy-manager
+# (PROXY_NETWORK), Prometheus and Loki only inside this stack. See README.md.
+#
+#   docker network create bike-maintainer-monitoring   # once, shared with portal/
+#   cp .env.example .env                               # fill in
+#   docker compose up -d
+name: bike-maintainer-monitoring
+
+services:
+  bike-maintainer-alloy:
+    image: 'grafana/alloy:v1.21.3'
+    container_name: 'bike-maintainer-alloy'
+    restart: unless-stopped
+    # Reads /var/lib/docker (container metrics), hence root; all host paths read-only. The Docker API only through
+    # bike-maintainer-docker-proxy, which lets read requests about containers through and nothing else.
+    user: '0'
+    command:
+      - 'run'
+      - '--server.http.listen-addr=0.0.0.0:12345'
+      - '--storage.path=/var/lib/alloy/data'
+      - '--disable-reporting'
+      - '/etc/alloy/config.alloy'
+    environment:
+      # Which containers are collected (name prefix) and what is probed; overridden by compose.dev.yaml.
+      - 'BM_CONTAINER_PREFIX=${BM_CONTAINER_PREFIX:-bike-maintainer-}'
+      - 'BM_BACKEND_TARGET=${BM_BACKEND_TARGET:-bike-maintainer-backend:8081}'
+      - 'BM_PROBE_APP_URL=${BM_PROBE_APP_URL:-https://app.bike-maintainer.de}'
+      - 'BM_PROBE_WEBSITE_URL=${BM_PROBE_WEBSITE_URL:-https://bike-maintainer.de}'
+      - 'BM_PROBE_MODULE=${BM_PROBE_MODULE:-https_2xx}'
+    volumes:
+      - './alloy/config.alloy:/etc/alloy/config.alloy:ro'
+      - 'alloy-data:/var/lib/alloy/data'
+      - '/proc:/host/proc:ro'
+      - '/sys:/host/sys:ro'
+      # cAdvisor reads the containers' cgroups at /sys/fs/cgroup.
+      - '/sys:/sys:ro'
+      - '/:/host/root:ro'
+      - '/var/lib/docker:/var/lib/docker:ro'
+    mem_limit: 384m
+    networks:
+      - default
+      - monitoring
+    depends_on:
+      - bike-maintainer-docker-proxy
+      - bike-maintainer-prometheus
+      - bike-maintainer-loki
+
+  # Only service with the Docker socket. Allows GET on containers (list, inspect, logs, stats), networks, info,
+  # version and events; everything that changes something (POST/PUT/DELETE, exec, images, volumes, networks, …) is refused, so a
+  # compromised Alloy cannot start containers on the host.
+  bike-maintainer-docker-proxy:
+    image: 'tecnativa/docker-socket-proxy:v0.5.0'
+    container_name: 'bike-maintainer-docker-proxy'
+    restart: unless-stopped
+    environment:
+      - 'CONTAINERS=1'
+      - 'INFO=1'
+      # Alloy's container discovery also reads the networks (labels); read-only like the rest (POST=0).
+      - 'NETWORKS=1'
+      - 'POST=0'
+    volumes:
+      - '/var/run/docker.sock:/var/run/docker.sock:ro'
+    mem_limit: 64m
+
+  bike-maintainer-prometheus:
+    image: 'prom/prometheus:v3.15.1'
+    container_name: 'bike-maintainer-prometheus'
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      # Alloy pushes all metrics (remote write); Prometheus scrapes nothing itself.
+      - '--web.enable-remote-write-receiver'
+    volumes:
+      - './prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro'
+      - 'prometheus-data:/prometheus'
+    mem_limit: 512m
+
+  bike-maintainer-loki:
+    image: 'grafana/loki:3.7'
+    container_name: 'bike-maintainer-loki'
+    restart: unless-stopped
+    command: [ '-config.file=/etc/loki/loki.yaml' ]
+    volumes:
+      - './loki/loki.yaml:/etc/loki/loki.yaml:ro'
+      - 'loki-data:/loki'
+    mem_limit: 512m
+
+  bike-maintainer-grafana:
+    image: 'grafana/grafana:13.3'
+    container_name: 'bike-maintainer-grafana'
+    restart: unless-stopped
+    environment:
+      - 'GF_SERVER_ROOT_URL=${BM_GRAFANA_URL:-https://monitoring.bike-maintainer.de}'
+      - 'GF_SECURITY_ADMIN_USER=admin'
+      - 'GF_SECURITY_ADMIN_PASSWORD=${BM_GRAFANA_ADMIN_PASSWORD:?set BM_GRAFANA_ADMIN_PASSWORD in .env}'
+      - 'GF_SECURITY_COOKIE_SECURE=${BM_GRAFANA_COOKIE_SECURE:-true}'
+      - 'GF_SECURITY_DISABLE_GRAVATAR=true'
+      - 'GF_USERS_ALLOW_SIGN_UP=false'
+      - 'GF_AUTH_ANONYMOUS_ENABLED=false'
+      # No calls home: usage statistics, update and plugin checks off.
+      - 'GF_ANALYTICS_REPORTING_ENABLED=false'
+      - 'GF_ANALYTICS_CHECK_FOR_UPDATES=false'
+      - 'GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES=false'
+      - 'GF_ANALYTICS_FEEDBACK_LINKS_ENABLED=false'
+      - 'GF_NEWS_NEWS_FEED_ENABLED=false'
+      # Alert mails via IONOS (STARTTLS), same mailbox as the app.
+      - 'GF_SMTP_ENABLED=true'
+      - 'GF_SMTP_HOST=${BM_SMTP_HOST:-smtp.ionos.de:587}'
+      - 'GF_SMTP_USER=${BM_SMTP_USER:-noreply@bike-maintainer.de}'
+      - 'GF_SMTP_PASSWORD=${BM_SMTP_PASSWORD:?set BM_SMTP_PASSWORD in .env}'
+      - 'GF_SMTP_FROM_ADDRESS=${BM_SMTP_FROM:-noreply@bike-maintainer.de}'
+      - 'GF_SMTP_FROM_NAME=Bike Maintainer Monitoring'
+      - 'GF_SMTP_STARTTLS_POLICY=${BM_SMTP_STARTTLS_POLICY:-MandatoryStartTLS}'
+      - 'GF_SMTP_SKIP_VERIFY=${BM_SMTP_SKIP_VERIFY:-false}'
+      # Read by the alerting provisioning (contact point).
+      - 'BM_ALERT_EMAIL=${BM_ALERT_EMAIL:-alert@bike-maintainer.de}'
+    volumes:
+      - './grafana/provisioning:/etc/grafana/provisioning:ro'
+      - './grafana/dashboards:/var/lib/grafana/dashboards:ro'
+      - 'grafana-data:/var/lib/grafana'
+    mem_limit: 384m
+    networks:
+      - default
+      - proxy
+    depends_on:
+      - bike-maintainer-prometheus
+      - bike-maintainer-loki
+
+volumes:
+  alloy-data:
+  prometheus-data:
+  loki-data:
+  grafana-data:
+
+networks:
+  # Alloy reaches the backend's management port (8081) here; created once, shared with portal/.
+  monitoring:
+    external: true
+    name: 'bike-maintainer-monitoring'
+  # Network of the existing nginx-proxy-manager; only Grafana joins it.
+  proxy:
+    external: true
+    name: '${PROXY_NETWORK:?set PROXY_NETWORK in .env}'

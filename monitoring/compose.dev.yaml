@@ -1,0 +1,29 @@
+# Monitoring against the local development stack (../dev), e.g. to try dashboards and alerts:
+#
+#   cd ../dev && docker compose up -d                  # dev stack first
+#   docker network create bike-maintainer-monitoring   # once
+#   docker compose --env-file .env.dev -f compose.yaml -f compose.dev.yaml up -d
+#
+# Grafana: http://localhost:8300 (admin / dev-admin-password), alert mails in Mailpit (http://localhost:8026).
+services:
+  bike-maintainer-alloy:
+    environment:
+      - 'BM_CONTAINER_PREFIX=bike-maintainer-dev-'
+      - 'BM_BACKEND_TARGET=bike-maintainer-dev-backend:8081'
+      - 'BM_PROBE_APP_URL=http://bike-maintainer-dev-frontend/'
+      - 'BM_PROBE_WEBSITE_URL=http://bike-maintainer-dev-website/'
+      - 'BM_PROBE_MODULE=http_2xx'
+    networks:
+      - default
+      - monitoring
+      - dev
+
+  bike-maintainer-grafana:
+    ports:
+      - '127.0.0.1:8300:3000'
+
+networks:
+  # The dev stack's network: backend, frontend, website and Mailpit.
+  dev:
+    external: true
+    name: 'bike-maintainer-dev_default'

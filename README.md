@@ -109,9 +109,17 @@ docker compose --profile tools stop bike-maintainer-phpmyadmin
 
 Anmeldung in phpMyAdmin als `maintenance` mit `BM_DB_PASSWORD`; es gibt kein Auto-Login.
 
+**Überwachung:** Das Backend hängt zusätzlich im Docker-Netz `bike-maintainer-monitoring`, über das nur der
+Überwachungs-Stack (`monitoring/`, siehe dort) seine Metriken auf Port 8081 abholt; nach außen ist der Port nicht
+erreichbar. Das Netz wird **einmalig** vor dem ersten Start angelegt (unabhängig davon, ob die Überwachung läuft).
+Backend und Frontend haben Healthchecks (`docker compose ps` zeigt `healthy`); das Frontend startet erst, wenn das
+Backend gesund ist. Das Backend schreibt seine Logs als JSON (eine Zeile pro Eintrag, `docker logs` bleibt lesbar
+genug, mit `jq` komfortabler).
+
 Starten:
 
 ```bash
+docker network create bike-maintainer-monitoring   # einmalig
 cd portal
 cp .env.example .env    # Werte eintragen
 docker compose up -d
@@ -119,6 +127,12 @@ docker compose up -d
 
 Für jede Variante reicht es, `compose.yaml` und `.env.example` aus dem jeweiligen Verzeichnis herunterzuladen; ein
 Klonen des ganzen Repos ist nicht nötig.
+
+## Überwachung des Portals (`monitoring/`)
+
+Eigener Stack neben `portal/` (Grafana Alloy, Prometheus, Loki, Grafana): Alarme per Mail an
+`alert@bike-maintainer.de`, Dashboards und zentrale Logs mit gekürzten IP-Adressen. Einrichtung und Details in
+[`monitoring/README.md`](monitoring/README.md).
 
 ## Lokale Entwicklung: kompletter Stack (`dev/`)
 
