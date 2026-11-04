@@ -96,7 +96,8 @@ Alle Images mit fester Version (Major.Minor gepinnt), Daten in benannten Volumes
 | `bm.auth.password_reset` | Counter | `step=requested\|completed` |
 | `bm.protection.altcha_failed` | Counter | – |
 | `bm.protection.rate_limited` | Counter | `group` (feste Endpunktgruppen, z. B. `login`, `registration`, `password_reset`) |
-| `bm.mail.sent` | Counter | `type` (Mail-Art), `result=success\|failure` |
+| `bm.mail.sent` | Counter | `type=verification\|password_reset\|registration_exists`, `result=queued\|quota_exceeded` (gezählt in `AccountMailComponentImpl`) |
+| `bm.mail.delivery` | Counter | `result=success\|failure` (gezählt im asynchronen `SmtpMailService`, der als einziger den Zustellerfolg kennt) |
 | `bm.mail.quota.used`, `bm.mail.quota.limit` | Gauge | – |
 | `bm.report.generated` | Timer | `type=report\|checklist`, `result=success\|failure` |
 
@@ -141,7 +142,7 @@ Benachrichtigungsrichtlinie, Regeln, Dashboards) – Änderungen nur über Git.
 | Backend | Backend-Metriken fehlen > 3 min · 5xx-Quote > 5 % über 5 min bei ≥ 20 Anfragen |
 | Logs | > 10 ERROR-Zeilen eines Containers in 5 min |
 | Sicherheit | > 30 fehlgeschlagene Logins in 15 min · > 50 Rate-Limit-Treffer in 15 min |
-| Mail | ≥ 3 fehlgeschlagene Mails in 15 min · Tageslimit ≥ 80 % |
+| Mail | ≥ 3 fehlgeschlagene Zustellungen (`bm.mail.delivery`, `result=failure`) in 15 min · Tageslimit ≥ 80 % |
 | Host | Root-Dateisystem > 85 % belegt · verfügbarer RAM < 10 % über 10 min |
 | Container | Portal-Container > 2 Neustarts in 15 min oder fehlt |
 | Selbstüberwachung | Keine Daten von Alloy > 5 min |
