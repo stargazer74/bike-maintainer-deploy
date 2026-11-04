@@ -1,0 +1,373 @@
+# Alert rules of the portal (spec: docs/specs/2026-11-04-monitoring-design.md). Thresholds are starting values.
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: portal
+    folder: Portal
+    interval: 1m
+    rules:
+      - uid: probe-down
+        title: App oder Website nicht erreichbar
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 900, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: 'probe_success'
+              instant: true
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: lt, params: [ 1 ] }
+        for: 2m
+        noDataState: Alerting
+        execErrState: Error
+        annotations:
+          summary: '{{ $labels.target }} ist seit 2 Minuten nicht erreichbar (Check über Proxy und TLS).'
+        labels:
+          area: portal
+      - uid: cert-expiry
+        title: Zertifikat läuft bald ab
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 900, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: '(probe_ssl_earliest_cert_expiry - time()) / 86400'
+              instant: true
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: lt, params: [ 14 ] }
+        for: 1h
+        noDataState: OK
+        execErrState: Error
+        annotations:
+          summary: 'Das Zertifikat von {{ $labels.target }} läuft in {{ humanize $values.A.Value }} Tagen ab.'
+        labels:
+          area: portal
+      - uid: backend-down
+        title: Backend-Metriken fehlen
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 900, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: 'up{job="backend"}'
+              instant: true
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: lt, params: [ 1 ] }
+        for: 3m
+        noDataState: Alerting
+        execErrState: Error
+        annotations:
+          summary: 'Das Backend liefert seit 3 Minuten keine Metriken – vermutlich läuft es nicht.'
+        labels:
+          area: portal
+      - uid: http-5xx
+        title: 5xx-Quote hoch
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 900, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: '(sum(rate(http_server_requests_seconds_count{status=~"5.."}[5m])) / sum(rate(http_server_requests_seconds_count[5m]))) and on() (sum(increase(http_server_requests_seconds_count[5m])) >= 20)'
+              instant: true
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [ 0.05 ] }
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        annotations:
+          summary: '{{ humanizePercentage $values.A.Value }} der Anfragen ans Backend enden mit einem Serverfehler (5xx).'
+        labels:
+          area: portal
+      - uid: error-logs
+        title: ERROR-Logs gehäuft
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 900, to: 0 }
+            datasourceUid: loki
+            model:
+              refId: A
+              expr: 'sum by (container) (count_over_time({level="ERROR"}[5m]))'
+              queryType: instant
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [ 10 ] }
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        annotations:
+          summary: '{{ $labels.container }} hat in 5 Minuten {{ $values.A.Value }} ERROR-Zeilen geschrieben.'
+        labels:
+          area: portal
+      - uid: failed-logins
+        title: Viele fehlgeschlagene Logins
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 900, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: 'sum(increase(bm_auth_login_total{result!="success"}[15m]))'
+              instant: true
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [ 30 ] }
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        annotations:
+          summary: '{{ humanize $values.A.Value }} fehlgeschlagene Anmeldungen in 15 Minuten.'
+        labels:
+          area: portal
+      - uid: rate-limited
+        title: Viele Rate-Limit-Treffer
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 900, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: 'sum(increase(bm_protection_rate_limited_total[15m]))'
+              instant: true
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [ 50 ] }
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        annotations:
+          summary: '{{ humanize $values.A.Value }} wegen Rate-Limit abgewiesene Anfragen in 15 Minuten.'
+        labels:
+          area: portal
+      - uid: mail-delivery
+        title: Mail-Zustellung fehlgeschlagen
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 900, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: 'sum(increase(bm_mail_delivery_total{result="failure"}[15m]))'
+              instant: true
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [ 2.5 ] }
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        annotations:
+          summary: '{{ humanize $values.A.Value }} Mails konnten in 15 Minuten nicht zugestellt werden (SMTP).'
+        labels:
+          area: portal
+      - uid: mail-quota
+        title: Mail-Tageslimit fast erreicht
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 900, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: 'bm_mail_quota_used / bm_mail_quota_limit'
+              instant: true
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [ 0.799 ] }
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        annotations:
+          summary: '{{ humanizePercentage $values.A.Value }} des Mail-Tageslimits sind verbraucht.'
+        labels:
+          area: portal
+      - uid: disk-full
+        title: Platte fast voll
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 900, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: '1 - node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}'
+              instant: true
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [ 0.85 ] }
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        annotations:
+          summary: 'Das Root-Dateisystem ist zu {{ humanizePercentage $values.A.Value }} belegt.'
+        labels:
+          area: portal
+      - uid: memory-low
+        title: Wenig Arbeitsspeicher
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 900, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: 'node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes'
+              instant: true
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: lt, params: [ 0.1 ] }
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        annotations:
+          summary: 'Nur noch {{ humanizePercentage $values.A.Value }} des Arbeitsspeichers sind verfügbar.'
+        labels:
+          area: portal
+      - uid: container-restarts
+        title: Container startet neu
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 900, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: 'changes(container_start_time_seconds{name=~"bike-maintainer-.*"}[15m])'
+              instant: true
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [ 2 ] }
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        annotations:
+          summary: '{{ $labels.name }} ist in 15 Minuten {{ $values.A.Value }}-mal neu gestartet.'
+        labels:
+          area: portal
+      - uid: container-missing
+        title: Portal-Container fehlt
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 900, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: 'max by (name) (time() - max_over_time(container_last_seen{name=~"bike-maintainer-(dev-)?(backend|frontend|mariadb)"}[24h]))'
+              instant: true
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [ 120 ] }
+        for: 2m
+        noDataState: Alerting
+        execErrState: Error
+        annotations:
+          summary: '{{ $labels.name }} läuft seit {{ humanizeDuration $values.A.Value }} nicht mehr.'
+        labels:
+          area: portal
+      - uid: alloy-silent
+        title: Keine Daten von Alloy
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 900, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: 'up{job="alloy-unix"}'
+              instant: true
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: lt, params: [ 1 ] }
+        for: 5m
+        noDataState: Alerting
+        execErrState: Error
+        annotations:
+          summary: 'Seit 5 Minuten kommen keine Daten vom Sammler (Alloy) – die Überwachung ist blind.'
+        labels:
+          area: portal

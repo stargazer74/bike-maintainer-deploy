@@ -1,0 +1,11 @@
+# All alerts to the mail contact point; one mail per alert rule, a reminder every 4 hours while it lasts, and a
+# resolved mail when it is over.
+apiVersion: 1
+
+policies:
+  - orgId: 1
+    receiver: email
+    group_by: [ 'alertname' ]
+    group_wait: 30s
+    group_interval: 5m
+    repeat_interval: 4h

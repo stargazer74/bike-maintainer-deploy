@@ -45,6 +45,36 @@ keine Mail.
    Falls `0`: `docker exec bike-maintainer-alloy wget -qO- https://app.bike-maintainer.de | head -c 100`.
 8. **Speicher** nach ein paar Stunden ansehen: `docker stats --no-stream`.
 
+## Alarme
+
+Alle Alarme gehen per Mail an `BM_ALERT_EMAIL` (Standard `alert@bike-maintainer.de`), Absender
+`noreply@bike-maintainer.de` über IONOS. Eine Mail pro Regel, solange das Problem besteht alle 4 Stunden eine
+Erinnerung, danach eine Entwarnung (`[RESOLVED]`). Regeln, Empfänger und Richtlinie liegen als Dateien in
+`grafana/provisioning/alerting/` – Änderungen über Git, nicht in der Oberfläche. Startwerte:
+
+| Regel | Alarm, wenn … |
+|---|---|
+| App oder Website nicht erreichbar | Check über Proxy und TLS schlägt > 2 min fehl |
+| Zertifikat läuft bald ab | Zertifikat von App oder Website läuft in < 14 Tagen ab |
+| Backend-Metriken fehlen | Backend liefert > 3 min keine Metriken |
+| 5xx-Quote hoch | > 5 % Serverfehler über 5 min (bei mindestens 20 Anfragen) |
+| ERROR-Logs gehäuft | > 10 ERROR-Zeilen eines Containers in 5 min |
+| Viele fehlgeschlagene Logins | > 30 in 15 min |
+| Viele Rate-Limit-Treffer | > 50 in 15 min |
+| Mail-Zustellung fehlgeschlagen | ≥ 3 nicht zugestellte Mails in 15 min |
+| Mail-Tageslimit fast erreicht | ≥ 80 % des Tageslimits verbraucht |
+| Platte fast voll | Root-Dateisystem > 85 % belegt (10 min) |
+| Wenig Arbeitsspeicher | < 10 % verfügbar (10 min) |
+| Container startet neu | ein Portal-Container > 2 Neustarts in 15 min |
+| Portal-Container fehlt | Backend, Frontend oder Datenbank seit > 2 min nicht gesehen |
+| Keine Daten von Alloy | > 5 min keine Daten vom Sammler – die Überwachung ist blind |
+
+**Testalarm** nach der Einrichtung:
+
+1. Grafana → *Alerting* → *Contact points* → `email` → *Test*: Testmail kommt an `alert@` an.
+2. `docker stop bike-maintainer-frontend` → nach etwa 3 Minuten Mail „App oder Website nicht erreichbar“;
+   `docker start bike-maintainer-frontend` → einige Minuten später die Entwarnung.
+
 ## Logs und Datenschutz
 
 Alloy liest die Logs aller Container, deren Name mit `bike-maintainer-` beginnt (nicht die der Überwachung
