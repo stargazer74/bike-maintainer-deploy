@@ -82,13 +82,55 @@ bleiben dabei erhalten.
 
 ## Portal hinter vorhandenem nginx-proxy-manager
 
-`portal/` bringt keinen eigenen Proxy mit und veröffentlicht keine Ports für die App. Nur das Frontend hängt
-zusätzlich im Docker-Netz des vorhandenen nginx-proxy-manager (`PROXY_NETWORK` in der `.env`) und ist dort als
-`bike-maintainer-frontend` erreichbar; `/api/` leitet der Frontend-Container selbst ans Backend weiter. Im
-nginx-proxy-manager genügt ein Proxy-Host für die Domain:
+`portal/` bringt keinen eigenen Proxy mit und veröffentlicht keine Ports. Nur das Frontend der App und die Website
+hängen zusätzlich im Docker-Netz des vorhandenen nginx-proxy-manager (`PROXY_NETWORK` in der `.env`) und sind dort
+als `bike-maintainer-frontend` bzw. `bike-maintainer-website` erreichbar; `/api/` leitet der Frontend-Container
+selbst ans Backend weiter. Im nginx-proxy-manager je ein Proxy-Host, jeweils mit SSL (Let's Encrypt) und „Force SSL“:
 
-- Ziel: `http://bike-maintainer-frontend:80`
-- SSL: Let's Encrypt, „Force SSL“ an
+| Domain | Ziel |
+|---|---|
+| `app.bike-maintainer.de` | `http://bike-maintainer-frontend:80` |
+| `bike-maintainer.de`, `www.bike-maintainer.de` | `http://bike-maintainer-website:80` |
+
+DNS: `app.` und `www.` (zusätzlich zur Hauptdomain) auf den Server zeigen lassen.
+
+**Website (WordPress mit Forum):** Image `ghcr.io/stargazer74/bike-maintainer-portal` (eigene Versionen,
+`BM_WEBSITE_VERSION`, Standard `0`), ganz `/var/www/html` liegt im Volume `website-data` – WordPress aktualisiert
+Kern, Plugins und Themes dort selbst, das Image bringt nur Theme und Must-use-Plugins mit. Die Website nutzt die
+vorhandene MariaDB mit **eigener** Datenbank `wordpress` und eigenem Nutzer, der keine Rechte auf die App-Daten hat
+(`BM_WEBSITE_DB_PASSWORD`); WordPress bekommt nie das Root-Passwort. Mails gehen über dasselbe Postfach wie die App;
+Registrierung und „Passwort vergessen“ des Forums schützt ein **eigener** ALTCHA-Schlüssel
+(`BM_WEBSITE_ALTCHA_HMAC_KEY`, nicht derselbe wie der der App).
+
+Einmalig nach dem ersten Start einrichten (installiert WordPress, Sprachen, Forum und Plugins; Werte aus
+`BM_WEBSITE_URL`, `BM_WEBSITE_ADMIN_*` der `.env`):
+
+```bash
+docker compose exec -u www-data bike-maintainer-website bm-setup
+```
+
+Nicht vorher die Website im Browser öffnen – sonst läuft stattdessen der WordPress-Installationsassistent, ohne
+Theme, Sprachen und Forum.
+
+**Bestehende Installation** (Datenbank lief schon vor der Website): Das Init-Skript `mariadb-init/10-website.sh`
+läuft nur bei leerem Datenverzeichnis. Datenbank und Nutzer deshalb einmalig von Hand anlegen. Dafür braucht es das
+Root-Passwort, das MariaDB beim allerersten Start zufällig erzeugt und ins Log geschrieben hat:
+
+```bash
+cd portal
+PW=$(docker logs bike-maintainer-mariadb 2>&1 | sed -n 's/.*GENERATED ROOT PASSWORD: //p' | head -1)
+docker compose exec -T -e MYSQL_PWD="$PW" bike-maintainer-mariadb sh -c 'mariadb -uroot <<EOF
+CREATE DATABASE IF NOT EXISTS \`wordpress\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER IF NOT EXISTS "wordpress"@"%" IDENTIFIED BY "$BM_WEBSITE_DB_PASSWORD";
+GRANT ALL PRIVILEGES ON \`wordpress\`.* TO "wordpress"@"%";
+EOF'
+```
+
+Ist `PW` leer, wurde der Container seit dem ersten Start neu erstellt und das Log ist weg; dann muss das
+Root-Passwort einmalig zurückgesetzt werden (MariaDB-Doku „Recover the root password“).
+
+**Backup der Website:** die Datenbank `wordpress` (z. B. `mariadb-dump` im MariaDB-Container) und das Volume
+`website-data` (Uploads, Plugins).
 
 **Registrierung (ab Backend 0.3):** Neue Nutzer registrieren sich selbst und bestätigen ihre E-Mail-Adresse per
 Link. Dafür braucht die `.env` das SMTP-Passwort von `noreply@bike-maintainer.de` (`SPRING_MAIL_PASSWORD`) und
