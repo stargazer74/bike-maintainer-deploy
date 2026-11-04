@@ -26,7 +26,7 @@ nach der Behebung eine Entwarnung. Logs aller Portal-Container sind in Grafana d
 ## Rahmenbedingungen
 
 - Server: 7,76 GiB RAM, bestehende Container zusammen ca. 2 GiB. Der Stack bekommt feste Speichergrenzen
-  (Summe ca. 1,7 GB), erwarteter Normalbetrieb 600–900 MB.
+  (Summe ca. 1,8 GB), erwarteter Normalbetrieb 600–900 MB.
 - Nur OSI-Open-Source, keine Dritten (Privacy first). Werkzeuge: Prometheus (Apache 2.0), Loki (AGPLv3),
   Alloy (Apache 2.0), Grafana (AGPLv3). Graylog bewusst nicht (SSPL, schwer).
 - Deploy-Repo ist pull-only: offizielle Images, Konfiguration per Bind-Mount, kein `build:`.
@@ -41,7 +41,7 @@ Lebenszyklus: Wird das Portal neu gestartet oder fällt es aus, läuft die Über
 | `bike-maintainer-alloy` | Sammelt alles: Logs der Container `bike-maintainer-*` (Docker-Socket, nur lesend), Host-Metriken (eingebauter Unix-Exporter, `/proc`, `/sys`, `/` nur lesend), Container-Metriken (eingebauter cAdvisor), Backend-Metriken (`bike-maintainer-backend:8081/actuator/prometheus`), Erreichbarkeits- und TLS-Checks (eingebauter Blackbox-Exporter) auf `https://app.bike-maintainer.de` und `https://bike-maintainer.de`. Kürzt IPs in Logs vor dem Versand. Schickt Metriken per Remote-Write an Prometheus, Logs an Loki. | 384 MB |
 | `bike-maintainer-prometheus` | Speichert Metriken (Remote-Write-Empfänger), Intervall 15 s, Aufbewahrung 30 Tage | 512 MB |
 | `bike-maintainer-loki` | Speichert Logs, Single-Binary, Dateisystem, Aufbewahrung 14 Tage (Compactor löscht) | 512 MB |
-| `bike-maintainer-grafana` | Dashboards, Log-Suche, Alarme per Mail | 256 MB |
+| `bike-maintainer-grafana` | Dashboards, Log-Suche, Alarme per Mail | 384 MB (Grafana 13 belegt schon beim Start gut 200 MB) |
 
 Alle Images mit fester Version (Major.Minor gepinnt), Daten in benannten Volumes.
 

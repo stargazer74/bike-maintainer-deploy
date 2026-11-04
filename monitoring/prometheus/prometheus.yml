@@ -1,0 +1,4 @@
+# Prometheus only stores: Alloy collects every metric and pushes it via remote write
+# (--web.enable-remote-write-receiver). Retention: --storage.tsdb.retention.time in compose.yaml.
+global:
+  scrape_interval: 15s

@@ -128,6 +128,12 @@ docker compose up -d
 Für jede Variante reicht es, `compose.yaml` und `.env.example` aus dem jeweiligen Verzeichnis herunterzuladen; ein
 Klonen des ganzen Repos ist nicht nötig.
 
+## Überwachung des Portals (`monitoring/`)
+
+Eigener Stack neben `portal/` (Grafana Alloy, Prometheus, Loki, Grafana): Alarme per Mail an
+`alert@bike-maintainer.de`, Dashboards und zentrale Logs mit gekürzten IP-Adressen. Einrichtung und Details in
+[`monitoring/README.md`](monitoring/README.md).
+
 ## Lokale Entwicklung: kompletter Stack (`dev/`)
 
 Für die Entwicklung gibt es in `dev/` den **ganzen** Stack im Portal-Modus auf einem Rechner: Backend, Frontend,

@@ -1,0 +1,217 @@
+// Grafana Alloy: the only collector of the monitoring stack.
+// - Logs of the portal containers (Docker socket) → IP truncation → Loki
+// - Host and container metrics, backend metrics, reachability/TLS probes → Prometheus (remote write)
+// Settings that differ between operation and development come from the environment (compose.yaml).
+
+logging {
+  level = "warn"
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Logs
+// ---------------------------------------------------------------------------------------------------------------
+
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+// Only the portal's containers (name prefix), never the monitoring containers themselves.
+discovery.relabel "portal_containers" {
+  targets = discovery.docker.containers.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/" + sys.env("BM_CONTAINER_PREFIX") + ".*"
+    action        = "keep"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/bike-maintainer-(alloy|prometheus|loki|grafana)"
+    action        = "drop"
+  }
+}
+
+// Labels of each log stream: container name and stdout/stderr – nothing about users.
+discovery.relabel "log_labels" {
+  targets = []
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_log_stream"]
+    target_label  = "stream"
+  }
+}
+
+loki.source.docker "containers" {
+  host          = "unix:///var/run/docker.sock"
+  targets       = discovery.relabel.portal_containers.output
+  relabel_rules = discovery.relabel.log_labels.rules
+  forward_to    = [loki.process.containers.receiver]
+}
+
+loki.process "containers" {
+  // Level of the backend's ECS JSON lines ({"log":{"level":"INFO"}}).
+  stage.json {
+    expressions = { ecs_level = "log.level" }
+  }
+
+  // Level of plain-text lines: MariaDB "[ERROR]"/"[Warning]"/"[Note]", nginx "[error]", Apache "[php:warn]".
+  stage.regex {
+    expression = `\[(?:[a-z_]+:)?(?P<text_level>ERROR|Warning|Note|emerg|alert|crit|error|warn|notice|info)\]`
+  }
+
+  // One spelling for all: ERROR, WARN, INFO (or the backend's DEBUG/TRACE).
+  stage.template {
+    source   = "level"
+    template = `{{ $l := ToUpper (or .ecs_level .text_level "") }}{{ if or (eq $l "EMERG") (eq $l "ALERT") (eq $l "CRIT") }}ERROR{{ else if eq $l "WARNING" }}WARN{{ else if or (eq $l "NOTE") (eq $l "NOTICE") }}INFO{{ else }}{{ $l }}{{ end }}`
+  }
+
+  stage.labels {
+    values = { level = "" }
+  }
+
+  // IP truncation before anything is stored (data protection): IPv4 last octet → 0, IPv6 (global unicast) kept up
+  // to the /48 prefix. IPv6 is only recognised with "::" or all 8 groups, so times like "2026:10:23:45" stay intact.
+  stage.replace {
+    expression = `\b(?:\d{1,3}\.){3}(\d{1,3})\b`
+    replace    = "0"
+  }
+
+  stage.replace {
+    expression = `\b[23][0-9a-fA-F]{3}(?::[0-9a-fA-F]{1,4}){2}((?::[0-9a-fA-F]{1,4}){5})\b`
+    replace    = "::"
+  }
+
+  stage.replace {
+    expression = `\b[23][0-9a-fA-F]{3}(?::[0-9a-fA-F]{1,4}){2}((?::[0-9a-fA-F]{1,4}){0,4}::(?:[0-9a-fA-F]{1,4}(?::[0-9a-fA-F]{1,4}){0,4})?)`
+    replace    = "::"
+  }
+
+  stage.replace {
+    expression = `\b[23][0-9a-fA-F]{3}(?::[0-9a-fA-F]{1,4})?::([0-9a-fA-F]{1,4}(?::[0-9a-fA-F]{1,4}){0,5})`
+    replace    = ""
+  }
+
+  forward_to = [loki.write.loki.receiver]
+}
+
+loki.write "loki" {
+  endpoint {
+    url = "http://bike-maintainer-loki:3100/loki/api/v1/push"
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Metrics
+// ---------------------------------------------------------------------------------------------------------------
+
+// Host: CPU, memory, filesystems (host paths mounted read-only under /host).
+prometheus.exporter.unix "host" {
+  procfs_path = "/host/proc"
+  sysfs_path  = "/host/sys"
+  rootfs_path = "/host/root"
+}
+
+// Containers: memory, CPU, start time (restarts) – Docker containers only, without their labels.
+prometheus.exporter.cadvisor "containers" {
+  docker_host            = "unix:///var/run/docker.sock"
+  docker_only            = true
+  store_container_labels = false
+  storage_duration       = "2m"
+}
+
+// Reachability and certificate of app and website, from the outside view (DNS, proxy, TLS).
+prometheus.exporter.blackbox "probes" {
+  config = `
+modules:
+  https_2xx:
+    prober: http
+    timeout: 10s
+    http:
+      method: GET
+      fail_if_not_ssl: true
+      preferred_ip_protocol: ip4
+  # Development (compose.dev.yaml): plain HTTP inside the Docker network; redirects (e.g. WordPress to its public
+  # localhost address) are not followed, a 3xx counts as reachable.
+  http_2xx:
+    prober: http
+    timeout: 10s
+    http:
+      method: GET
+      preferred_ip_protocol: ip4
+      no_follow_redirects: true
+      valid_status_codes: [200, 301, 302, 303, 307, 308]
+`
+
+  target {
+    name    = "app"
+    address = sys.env("BM_PROBE_APP_URL")
+    module  = sys.env("BM_PROBE_MODULE")
+  }
+
+  target {
+    name    = "website"
+    address = sys.env("BM_PROBE_WEBSITE_URL")
+    module  = sys.env("BM_PROBE_MODULE")
+  }
+}
+
+// Fixed job names, used by the alert rules and dashboards.
+discovery.relabel "host" {
+  targets = prometheus.exporter.unix.host.targets
+  rule {
+    target_label = "job"
+    replacement  = "alloy-unix"
+  }
+}
+
+discovery.relabel "containers" {
+  targets = prometheus.exporter.cadvisor.containers.targets
+  rule {
+    target_label = "job"
+    replacement  = "alloy-cadvisor"
+  }
+}
+
+// The exporter names each probe target after its block ("app", "website"); kept as label "target".
+discovery.relabel "probes" {
+  targets = prometheus.exporter.blackbox.probes.targets
+  rule {
+    source_labels = ["job"]
+    regex         = ".*/(app|website)"
+    target_label  = "target"
+  }
+  rule {
+    target_label = "job"
+    replacement  = "blackbox"
+  }
+}
+
+prometheus.scrape "exporters" {
+  targets         = array.concat(discovery.relabel.host.output, discovery.relabel.containers.output, discovery.relabel.probes.output)
+  scrape_interval = "15s"
+  forward_to      = [prometheus.remote_write.prometheus.receiver]
+}
+
+// Backend metrics on the management port, reachable only through the network bike-maintainer-monitoring.
+prometheus.scrape "backend" {
+  targets = [{
+    "__address__" = sys.env("BM_BACKEND_TARGET"),
+    "job"         = "backend",
+  }]
+  metrics_path    = "/actuator/prometheus"
+  scrape_interval = "15s"
+  forward_to      = [prometheus.remote_write.prometheus.receiver]
+}
+
+prometheus.remote_write "prometheus" {
+  endpoint {
+    url = "http://bike-maintainer-prometheus:9090/api/v1/write"
+  }
+}

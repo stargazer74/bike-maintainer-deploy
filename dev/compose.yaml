@@ -84,6 +84,8 @@ services:
       - 'BM_PUBLIC_URL=http://localhost:${APP_PORT:-8100}'
       # Public development key, never for operation.
       - 'BM_ALTCHA_HMAC_KEY=local-development-key-not-for-production'
+      # JSON logs as in portal/, so the monitoring (monitoring/compose.dev.yaml) sees the same as in operation.
+      - 'LOGGING_STRUCTURED_FORMAT_CONSOLE=ecs'
     depends_on:
       bike-maintainer-mariadb:
         condition: service_healthy
