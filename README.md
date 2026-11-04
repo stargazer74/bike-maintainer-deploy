@@ -144,7 +144,7 @@ docker compose exec -u www-data bike-maintainer-website bm-setup    # einmalig: 
 | Was | Adresse | Zugang |
 |---|---|---|
 | App | <http://localhost:8100> | Initial-Admin aus `.env` (`BM_INITIAL_ADMIN_*`) oder registrieren |
-| Website | <http://localhost:8200> | Admin unter `/wp-admin` aus `.env` (`BM_WEBSITE_ADMIN_*`) |
+| Website | <http://localhost:8200> | Admin unter `/wp-admin` aus `.env` (`BM_WEBSITE_ADMIN_*`); Forum unter `/forum/`, Registrierung mit ALTCHA |
 | Mailpit | <http://localhost:8026> | alle Mails von App und Website |
 | phpMyAdmin | <http://localhost:8101> | `maintenance` / `BM_DB_PASSWORD` bzw. `wordpress` / `BM_WEBSITE_DB_PASSWORD` |
 
