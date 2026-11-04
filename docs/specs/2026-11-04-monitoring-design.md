@@ -189,3 +189,12 @@ strukturierten Logs und die zurückgestellten Metriken als „später“.
 - Haushaltsmetriken (Profilauswahl).
 - Check von außen (Totalausfall des Servers).
 - Loki durch VictoriaLogs ersetzen, falls der Speicher knapp wird.
+- Falls Angreifer einzeln wiedererkannt werden müssen: bei sicherheitsrelevanten Log-Ereignissen (fehlgeschlagener
+  Login, Rate-Limit) zusätzlich ein Hash der vollen IP mit täglich wechselndem geheimem Salt (pseudonym, nicht
+  umkehrbar, nur innerhalb eines Tages zuordenbar). Volle IPs werden nicht gespeichert.
+
+## Hinweis außerhalb dieses Stacks
+
+Der nginx-proxy-manager auf dem Host schreibt eigene Zugriffs-Logs (vermutlich mit vollen IPs) in sein Daten-Volume.
+Der Stack sammelt sie nicht ein; ihre Aufbewahrung ist auf dem Server zu prüfen und in der Datenschutzerklärung zu
+nennen.
