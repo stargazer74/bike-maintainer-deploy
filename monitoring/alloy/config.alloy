@@ -98,6 +98,18 @@ loki.process "containers" {
     replace    = ""
   }
 
+  // Secrets and addresses never reach Loki: the frontend's access log contains the links from the account mails
+  // (?token=… in the request and in the referer), SMTP errors may repeat a recipient address.
+  stage.replace {
+    expression = `[?&](?:token|key|code)=([^&\s"]+)`
+    replace    = "REDACTED"
+  }
+
+  stage.replace {
+    expression = `\b([A-Za-z0-9._%+-]+)@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b`
+    replace    = "***"
+  }
+
   forward_to = [loki.write.loki.receiver]
 }
 

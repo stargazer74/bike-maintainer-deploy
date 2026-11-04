@@ -94,7 +94,9 @@ Alloy liest die Logs aller Container, deren Name mit `bike-maintainer-` beginnt 
 selbst), und speichert sie in Loki – mit den Labels `container`, `level` (`ERROR`, `WARN`, `INFO`, …) und `stream`.
 **Bevor** etwas gespeichert wird, kürzt Alloy IP-Adressen: IPv4 auf das letzte Byte genullt (`203.0.113.17` →
 `203.0.113.0`), IPv6 auf das /48-Präfix (`2001:db8:abcd:12::1` → `2001:db8:abcd::`). Nach 14 Tagen löscht Loki die
-Logs. Das Backend loggt keine E-Mail-Adressen, Tokens oder Passwörter.
+Logs. Außerdem schwärzt Alloy Parameter `token=`, `key=` und `code=` in URLs (die Links aus den Konto-Mails stehen
+sonst im Zugriffs-Log des Frontends) und den Teil vor dem `@` von E-Mail-Adressen (`***@example.org`). Das Backend
+loggt selbst keine E-Mail-Adressen, Tokens oder Passwörter.
 
 Textbaustein für die Datenschutzerklärung:
 
@@ -106,6 +108,15 @@ Textbaustein für die Datenschutzerklärung:
 **Nicht durch diesen Stack abgedeckt:** Der nginx-proxy-manager auf dem Host schreibt eigene Zugriffs-Logs mit
 vollen IP-Adressen in sein Daten-Volume. Deren Aufbewahrung dort prüfen und ebenfalls in der Datenschutzerklärung
 nennen.
+
+## Rechte von Alloy (bewusste Entscheidung)
+
+Alloy läuft als root und bekommt den Docker-Socket sowie `/`, `/proc`, `/sys` und `/var/lib/docker` des Hosts
+eingehängt – das brauchen Log-Sammlung, Host- und Container-Metriken. „Nur lesend“ gilt für die Verzeichnisse,
+**nicht für den Docker-Socket**: Wer Alloy übernimmt, kann über die Docker-API Container starten und damit den Host
+kontrollieren, und kann alle Dateien des Hosts lesen (auch Datenbank-Dateien und `.env`). Abgemildert wird das
+dadurch, dass Alloy keinen Port nach außen hat und nur offizielle Images läuft. Eine weitere Härtung wäre ein
+Docker-Socket-Proxy, der nur lesende Container-Abfragen durchlässt.
 
 ## Lokal ausprobieren (gegen `dev/`)
 
