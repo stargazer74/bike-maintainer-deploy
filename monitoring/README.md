@@ -75,6 +75,19 @@ Erinnerung, danach eine Entwarnung (`[RESOLVED]`). Regeln, Empfänger und Richtl
 2. `docker stop bike-maintainer-frontend` → nach etwa 3 Minuten Mail „App oder Website nicht erreichbar“;
    `docker start bike-maintainer-frontend` → einige Minuten später die Entwarnung.
 
+## Dashboards
+
+Im Grafana-Ordner **Portal** (Dateien in `grafana/dashboards/`, Änderungen über Git):
+
+- **Portal-Überblick:** Erreichbarkeit, Restlaufzeit der Zertifikate, Anfragen und Fehlerquote, Antwortzeiten
+  (p50/p95), CPU, Arbeitsspeicher und Platte des Servers, Speicher pro Container.
+- **Backend:** JVM-Heap, Datenbank-Verbindungen, Anmeldungen, Schutzmechanismen (Rate-Limit, ALTCHA, Kontosperren),
+  Registrierungen und Passwort-Zurücksetzen, Mails und Tageslimit, PDF-Erzeugung. Bedeutung der Metriken:
+  `docs/metrics.md` im Backend-Repo.
+- **Logs:** ERROR-Zeilen pro Container, Logs mit Filter nach Container und Level und einem Suchfeld.
+
+Neu entstandene Zähler zeigen ihr allererstes Ereignis nicht (Prometheus braucht zwei Messpunkte für `increase`).
+
 ## Logs und Datenschutz
 
 Alloy liest die Logs aller Container, deren Name mit `bike-maintainer-` beginnt (nicht die der Überwachung

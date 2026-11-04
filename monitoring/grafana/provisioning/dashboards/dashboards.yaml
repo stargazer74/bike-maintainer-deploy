@@ -1,0 +1,11 @@
+# Dashboards from monitoring/grafana/dashboards/*.json, folder "Portal". Changes go through git.
+apiVersion: 1
+
+providers:
+  - name: portal
+    folder: Portal
+    type: file
+    allowUiUpdates: false
+    disableDeletion: true
+    options:
+      path: /var/lib/grafana/dashboards

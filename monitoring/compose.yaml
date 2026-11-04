@@ -102,6 +102,7 @@ services:
       - 'BM_ALERT_EMAIL=${BM_ALERT_EMAIL:-alert@bike-maintainer.de}'
     volumes:
       - './grafana/provisioning:/etc/grafana/provisioning:ro'
+      - './grafana/dashboards:/var/lib/grafana/dashboards:ro'
       - 'grafana-data:/var/lib/grafana'
     mem_limit: 384m
     networks:
