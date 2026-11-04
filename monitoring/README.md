@@ -15,6 +15,7 @@ Entwurf und Entscheidungen: [`docs/specs/2026-11-04-monitoring-design.md`](../do
 | `bike-maintainer-prometheus` | speichert Metriken (alle 15 s, 30 Tage) | 512 MB |
 | `bike-maintainer-loki` | speichert Logs (14 Tage) | 512 MB |
 | `bike-maintainer-grafana` | Dashboards, Log-Suche, Alarme per Mail | 384 MB |
+| `bike-maintainer-docker-proxy` | einziger Zugang zum Docker-Socket, nur lesend (siehe unten) | 64 MB |
 
 Im Normalbetrieb zusammen etwa 500–900 MB. Der Stack läuft unabhängig von `portal/` weiter, auch wenn das Portal
 ausfällt. Es werden **keine Ports** veröffentlicht: Grafana ist nur über den nginx-proxy-manager erreichbar,
@@ -109,14 +110,17 @@ Textbaustein für die Datenschutzerklärung:
 vollen IP-Adressen in sein Daten-Volume. Deren Aufbewahrung dort prüfen und ebenfalls in der Datenschutzerklärung
 nennen.
 
-## Rechte von Alloy (bewusste Entscheidung)
+## Rechte von Alloy
 
-Alloy läuft als root und bekommt den Docker-Socket sowie `/`, `/proc`, `/sys` und `/var/lib/docker` des Hosts
-eingehängt – das brauchen Log-Sammlung, Host- und Container-Metriken. „Nur lesend“ gilt für die Verzeichnisse,
-**nicht für den Docker-Socket**: Wer Alloy übernimmt, kann über die Docker-API Container starten und damit den Host
-kontrollieren, und kann alle Dateien des Hosts lesen (auch Datenbank-Dateien und `.env`). Abgemildert wird das
-dadurch, dass Alloy keinen Port nach außen hat und nur offizielle Images läuft. Eine weitere Härtung wäre ein
-Docker-Socket-Proxy, der nur lesende Container-Abfragen durchlässt.
+Den Docker-Socket hat nur `bike-maintainer-docker-proxy`
+([tecnativa/docker-socket-proxy](https://github.com/Tecnativa/docker-socket-proxy)). Er lässt ausschließlich
+lesende Abfragen zu Containern, Netzwerken, Info und Version durch; alles, was etwas verändert (Container starten,
+`exec`, Images, Volumes, …), beantwortet er mit 403. Alloy spricht die Docker-API nur über ihn an – ein übernommenes
+Alloy kann also keine Container auf dem Host starten.
+
+Alloy selbst läuft weiterhin als root, weil cAdvisor `/var/lib/docker` lesen muss, und bekommt `/`, `/proc`, `/sys`
+und `/var/lib/docker` des Hosts nur lesend eingehängt (Host-Metriken wie der Plattenplatz). Lesen kann es damit
+weiterhin alle Dateien des Hosts; Alloy hat aber keinen Port nach außen und läuft aus dem offiziellen Image.
 
 ## Lokal ausprobieren (gegen `dev/`)
 

@@ -162,7 +162,7 @@ Als JSON provisioniert:
   (Pflicht), keine Selbstregistrierung, kein anonymer Zugriff, keine Telemetrie/Update-Checks nach außen
   (`GF_ANALYTICS_*` aus), keine Gravatar-Bilder.
 - Prometheus, Loki und Port 8081 nur in internen Netzen.
-- Docker-Socket und Host-Pfade nur lesend in Alloy.
+- Docker-API nur über `bike-maintainer-docker-proxy` (tecnativa/docker-socket-proxy, nur lesende Abfragen zu Containern, Netzwerken, Info, Version); Host-Pfade nur lesend in Alloy.
 
 ## Lokaler Test
 

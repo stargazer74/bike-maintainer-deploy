@@ -13,7 +13,8 @@ services:
     image: 'grafana/alloy:v1.21.3'
     container_name: 'bike-maintainer-alloy'
     restart: unless-stopped
-    # Reads the Docker socket and /var/lib/docker (container logs and metrics), hence root; everything read-only.
+    # Reads /var/lib/docker (container metrics), hence root; all host paths read-only. The Docker API only through
+    # bike-maintainer-docker-proxy, which lets read requests about containers through and nothing else.
     user: '0'
     command:
       - 'run'
@@ -31,7 +32,6 @@ services:
     volumes:
       - './alloy/config.alloy:/etc/alloy/config.alloy:ro'
       - 'alloy-data:/var/lib/alloy/data'
-      - '/var/run/docker.sock:/var/run/docker.sock:ro'
       - '/proc:/host/proc:ro'
       - '/sys:/host/sys:ro'
       # cAdvisor reads the containers' cgroups at /sys/fs/cgroup.
@@ -43,8 +43,26 @@ services:
       - default
       - monitoring
     depends_on:
+      - bike-maintainer-docker-proxy
       - bike-maintainer-prometheus
       - bike-maintainer-loki
+
+  # Only service with the Docker socket. Allows GET on containers (list, inspect, logs, stats), networks, info,
+  # version and events; everything that changes something (POST/PUT/DELETE, exec, images, volumes, networks, …) is refused, so a
+  # compromised Alloy cannot start containers on the host.
+  bike-maintainer-docker-proxy:
+    image: 'tecnativa/docker-socket-proxy:v0.5.0'
+    container_name: 'bike-maintainer-docker-proxy'
+    restart: unless-stopped
+    environment:
+      - 'CONTAINERS=1'
+      - 'INFO=1'
+      # Alloy's container discovery also reads the networks (labels); read-only like the rest (POST=0).
+      - 'NETWORKS=1'
+      - 'POST=0'
+    volumes:
+      - '/var/run/docker.sock:/var/run/docker.sock:ro'
+    mem_limit: 64m
 
   bike-maintainer-prometheus:
     image: 'prom/prometheus:v3.15.1'

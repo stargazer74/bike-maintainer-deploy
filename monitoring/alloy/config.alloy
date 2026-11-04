@@ -1,5 +1,5 @@
 // Grafana Alloy: the only collector of the monitoring stack.
-// - Logs of the portal containers (Docker socket) → IP truncation → Loki
+// - Logs of the portal containers (Docker API via bike-maintainer-docker-proxy) → IP truncation → Loki
 // - Host and container metrics, backend metrics, reachability/TLS probes → Prometheus (remote write)
 // Settings that differ between operation and development come from the environment (compose.yaml).
 
@@ -12,7 +12,7 @@ logging {
 // ---------------------------------------------------------------------------------------------------------------
 
 discovery.docker "containers" {
-  host = "unix:///var/run/docker.sock"
+  host = "tcp://bike-maintainer-docker-proxy:2375"
 }
 
 // Only the portal's containers (name prefix), never the monitoring containers themselves.
@@ -49,7 +49,7 @@ discovery.relabel "log_labels" {
 }
 
 loki.source.docker "containers" {
-  host          = "unix:///var/run/docker.sock"
+  host          = "tcp://bike-maintainer-docker-proxy:2375"
   targets       = discovery.relabel.portal_containers.output
   relabel_rules = discovery.relabel.log_labels.rules
   forward_to    = [loki.process.containers.receiver]
@@ -132,7 +132,7 @@ prometheus.exporter.unix "host" {
 
 // Containers: memory, CPU, start time (restarts) – Docker containers only, without their labels.
 prometheus.exporter.cadvisor "containers" {
-  docker_host            = "unix:///var/run/docker.sock"
+  docker_host            = "tcp://bike-maintainer-docker-proxy:2375"
   docker_only            = true
   store_container_labels = false
   storage_duration       = "2m"
