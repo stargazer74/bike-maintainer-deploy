@@ -56,6 +56,19 @@ services:
       - 'BM_MAIL_FROM=${BM_MAIL_FROM:-noreply@bike-maintainer.de}'
       - 'BM_PUBLIC_URL=${BM_PUBLIC_URL:-https://app.bike-maintainer.de}'
       - 'BM_ALTCHA_HMAC_KEY=${BM_ALTCHA_HMAC_KEY:?set BM_ALTCHA_HMAC_KEY in .env}'
+      # One JSON line per log entry (ECS), so the monitoring (monitoring/) can filter by level and endpoint.
+      - 'LOGGING_STRUCTURED_FORMAT_CONSOLE=ecs'
+    # The image has neither curl nor wget; bash's /dev/tcp asks the actuator on the management port.
+    healthcheck:
+      test: [ 'CMD', 'bash', '-c', 'exec 3<>/dev/tcp/localhost/8081 && printf "GET /actuator/health HTTP/1.0\r\nHost: localhost\r\n\r\n" >&3 && grep -q "\"status\":\"UP\"" <&3' ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    # monitoring: only the monitoring's collector (Alloy) reaches the metrics on port 8081 through this network.
+    networks:
+      - default
+      - monitoring
     depends_on:
       bike-maintainer-mariadb:
         condition: service_healthy
@@ -67,11 +80,19 @@ services:
     environment:
       # The frontend's nginx forwards /api to the backend inside the compose network.
       - 'BACKEND_HOST=bike-maintainer-backend:8080'
+    healthcheck:
+      # 127.0.0.1, not localhost: nginx listens on IPv4 only.
+      test: [ 'CMD', 'wget', '-qO', '/dev/null', 'http://127.0.0.1/' ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     networks:
       - default
       - proxy
     depends_on:
-      - bike-maintainer-backend
+      bike-maintainer-backend:
+        condition: service_healthy
 
 volumes:
   mariadb-data:
@@ -83,3 +104,7 @@ networks:
   proxy:
     external: true
     name: '${PROXY_NETWORK:?set PROXY_NETWORK in .env}'
+  # Shared with the monitoring stack (monitoring/compose.yaml); create once: docker network create bike-maintainer-monitoring
+  monitoring:
+    external: true
+    name: 'bike-maintainer-monitoring'
