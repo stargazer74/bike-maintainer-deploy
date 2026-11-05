@@ -1,6 +1,6 @@
 # Überwachung des Portals (`monitoring/`)
 
-Meldet Probleme des Portal-Betriebs (`portal/`, künftig auch die Website) per Mail an `alert@bike-maintainer.de`,
+Meldet Probleme des Portal-Betriebs (`portal/`, künftig auch die Website) per Mail an `BM_ALERT_EMAIL`,
 ohne dass jemand nachsehen muss: App oder Website nicht erreichbar, Zertifikat läuft ab, Fehler häufen sich,
 Platte oder Speicher voll, Mail-Tageslimit fast erreicht, auffällig viele fehlgeschlagene Logins. Dazu Dashboards
 und eine durchsuchbare Ansicht aller Container-Logs. Der Haushaltsmodus wird nicht überwacht.
@@ -28,28 +28,28 @@ keine Mail.
 
 1. **Netz** (einmalig, gemeinsam mit `portal/`): `docker network create bike-maintainer-monitoring`
 2. **Portal** mit dem Stand, der das Backend in dieses Netz hängt, neu starten (`cd portal && docker compose up -d`).
-3. **Postfach** `alert@bike-maintainer.de` (oder eine Weiterleitung) bei IONOS anlegen – sonst gehen die Alarme ins
-   Leere.
-4. **DNS:** `monitoring.bike-maintainer.de` auf den Server zeigen lassen.
+3. **Postfach** für die Alarme (`BM_ALERT_EMAIL`, oder eine Weiterleitung) beim Mailanbieter anlegen – sonst gehen
+   die Alarme ins Leere.
+4. **DNS:** die Adresse für Grafana (z. B. `monitoring.example.com`) auf den Server zeigen lassen.
 5. **`.env`:**
 
    ```bash
    cd monitoring
-   cp .env.example .env    # PROXY_NETWORK, BM_GRAFANA_ADMIN_PASSWORD, BM_SMTP_PASSWORD eintragen
+   cp .env.example .env    # alle Werte ohne Standard eintragen (siehe Kommentare)
    docker compose up -d
    ```
 
-6. **Proxy-Host** im nginx-proxy-manager: `monitoring.bike-maintainer.de` → `http://bike-maintainer-grafana:3000`,
+6. **Proxy-Host** im nginx-proxy-manager: Adresse aus `BM_GRAFANA_URL` → `http://bike-maintainer-grafana:3000`,
    SSL mit Let's Encrypt, „Force SSL“ an. Anmeldung in Grafana als `admin` mit `BM_GRAFANA_ADMIN_PASSWORD`.
 7. **Prüfen**, dass der Server seine eigenen öffentlichen Adressen erreicht (die Checks laufen bewusst über DNS,
    Proxy und TLS): in Grafana unter *Explore* → Prometheus `probe_success` muss für `app` und `website` `1` sein.
-   Falls `0`: `docker exec bike-maintainer-alloy wget -qO- https://app.bike-maintainer.de | head -c 100`.
+   Falls `0`: `docker exec bike-maintainer-alloy sh -c 'wget -qO- "$BM_PROBE_APP_URL"' | head -c 100`.
 8. **Speicher** nach ein paar Stunden ansehen: `docker stats --no-stream`.
 
 ## Alarme
 
-Alle Alarme gehen per Mail an `BM_ALERT_EMAIL` (Standard `alert@bike-maintainer.de`), Absender
-`noreply@bike-maintainer.de` über IONOS. Eine Mail pro Regel, solange das Problem besteht alle 4 Stunden eine
+Alle Alarme gehen per Mail an `BM_ALERT_EMAIL`, Absender ist das SMTP-Postfach
+(`BM_SMTP_USER`). Eine Mail pro Regel, solange das Problem besteht alle 4 Stunden eine
 Erinnerung, danach eine Entwarnung (`[RESOLVED]`). Regeln, Empfänger und Richtlinie liegen als Dateien in
 `grafana/provisioning/alerting/` – Änderungen über Git, nicht in der Oberfläche. Startwerte:
 
@@ -72,7 +72,7 @@ Erinnerung, danach eine Entwarnung (`[RESOLVED]`). Regeln, Empfänger und Richtl
 
 **Testalarm** nach der Einrichtung:
 
-1. Grafana → *Alerting* → *Contact points* → `email` → *Test*: Testmail kommt an `alert@` an.
+1. Grafana → *Alerting* → *Contact points* → `email` → *Test*: Testmail kommt an `BM_ALERT_EMAIL` an.
 2. `docker stop bike-maintainer-frontend` → nach etwa 3 Minuten Mail „App oder Website nicht erreichbar“;
    `docker start bike-maintainer-frontend` → einige Minuten später die Entwarnung.
 

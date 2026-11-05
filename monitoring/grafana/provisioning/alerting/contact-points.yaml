@@ -1,4 +1,4 @@
-# Alert mails to BM_ALERT_EMAIL (compose.yaml, default alert@bike-maintainer.de), sent via the SMTP settings GF_SMTP_*.
+# Alert mails to BM_ALERT_EMAIL (monitoring/.env), sent via the SMTP settings GF_SMTP_*.
 apiVersion: 1
 
 contactPoints:
