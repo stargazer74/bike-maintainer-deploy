@@ -17,6 +17,9 @@ services:
       - 'mariadb-data:/var/lib/mysql'
       # Runs only when the data directory is empty (first start); existing installations: see README.
       - './mariadb-init:/docker-entrypoint-initdb.d:ro'
+    networks:
+      - default
+      - website
     healthcheck:
       test: [ 'CMD', 'healthcheck.sh', '--connect', '--innodb_initialized' ]
       interval: 5s
@@ -128,9 +131,10 @@ services:
       - 'BM_ADMIN_PASSWORD=${BM_WEBSITE_ADMIN_PASSWORD:-}'
     volumes:
       - 'website-data:/var/www/html'
-    # Reaches the database internally; only the proxy reaches the website (as bike-maintainer-website:80).
+    # Reaches only the database (network "website"), not the backend; only the proxy reaches the website (as
+    # bike-maintainer-website:80). Outgoing traffic (updates, mail) goes through the proxy network.
     networks:
-      - default
+      - website
       - proxy
     depends_on:
       bike-maintainer-mariadb:
@@ -144,6 +148,10 @@ volumes:
 # name over this shared network (bike-maintainer-frontend:80, bike-maintainer-website:80). The frontend's nginx forwards /api/ to
 # bike-maintainer-backend internally, so the backend stays in the default network only.
 networks:
+  # Website and database only: WordPress has the largest attack surface of the stack, so it must not reach the
+  # backend (including its management port). Internal: no route to the outside through this network.
+  website:
+    internal: true
   proxy:
     external: true
     name: '${PROXY_NETWORK:?set PROXY_NETWORK in .env}'

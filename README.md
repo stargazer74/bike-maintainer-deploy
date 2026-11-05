@@ -112,6 +112,13 @@ docker compose exec -u www-data bike-maintainer-website bm-setup
 Nicht vorher die Website im Browser öffnen – sonst läuft stattdessen der WordPress-Installationsassistent, ohne
 Theme, Sprachen und Forum.
 
+Danach `BM_WEBSITE_ADMIN_PASSWORD` aus der `.env` löschen und den Container neu erstellen
+(`docker compose up -d bike-maintainer-website`) – sonst steht das Admin-Passwort dauerhaft in der Umgebung des
+Containers (sichtbar z. B. mit `docker inspect`). WordPress braucht es nach der Einrichtung nicht mehr.
+
+Die Website hängt nur im Proxy-Netz und in einem internen Netz `website` mit der Datenbank. Backend und Frontend
+erreicht sie nicht direkt – WordPress ist der Teil mit der größten Angriffsfläche.
+
 **Bestehende Installation** (Datenbank lief schon vor der Website): Das Init-Skript `mariadb-init/10-website.sh`
 läuft nur bei leerem Datenverzeichnis. Datenbank und Nutzer deshalb einmalig von Hand anlegen. Dafür braucht es das
 Root-Passwort, das MariaDB beim allerersten Start zufällig erzeugt und ins Log geschrieben hat:
