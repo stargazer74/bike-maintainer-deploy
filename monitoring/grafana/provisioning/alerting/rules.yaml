@@ -328,7 +328,7 @@ groups:
             datasourceUid: prometheus
             model:
               refId: A
-              expr: 'max by (name) (time() - max_over_time(container_last_seen{name=~"bike-maintainer-(dev-)?(backend|frontend|mariadb)"}[24h]))'
+              expr: 'max by (name) (time() - max_over_time(container_last_seen{name=~"bike-maintainer-(dev-)?(backend|frontend|mariadb|website)"}[24h]))'
               instant: true
           - refId: C
             datasourceUid: __expr__

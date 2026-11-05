@@ -67,7 +67,7 @@ Erinnerung, danach eine Entwarnung (`[RESOLVED]`). Regeln, Empfänger und Richtl
 | Platte fast voll | Root-Dateisystem > 85 % belegt (10 min) |
 | Wenig Arbeitsspeicher | < 10 % verfügbar (10 min) |
 | Container startet neu | ein Portal-Container > 2 Neustarts in 15 min |
-| Portal-Container fehlt | Backend, Frontend oder Datenbank seit > 2 min nicht gesehen |
+| Portal-Container fehlt | Backend, Frontend, Datenbank oder Website seit > 2 min nicht gesehen |
 | Keine Daten von Alloy | > 5 min keine Daten vom Sammler – die Überwachung ist blind |
 
 **Testalarm** nach der Einrichtung:

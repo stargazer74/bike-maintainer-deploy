@@ -1,5 +1,5 @@
-# Only the frontend is reachable, and only through the nginx-proxy-manager's network. The database publishes no port;
-# phpMyAdmin is optional (compose profile "tools") and listens on the host's loopback interface only.
+# Only the frontend and the website are reachable, and only through the nginx-proxy-manager's network. The database
+# publishes no port; phpMyAdmin is optional (compose profile "tools") and listens on the host's loopback interface only.
 services:
   bike-maintainer-mariadb:
     image: 'mariadb:11'
@@ -11,8 +11,15 @@ services:
       - 'MARIADB_PASSWORD=${BM_DB_PASSWORD:?set BM_DB_PASSWORD in .env}'
       # Nobody needs root: the app and phpMyAdmin use the "maintenance" user.
       - 'MARIADB_RANDOM_ROOT_PASSWORD=1'
+      # Read by mariadb-init/10-website.sh: own database and user for the website (WordPress), rights only on it.
+      - 'BM_WEBSITE_DB_PASSWORD=${BM_WEBSITE_DB_PASSWORD:?set BM_WEBSITE_DB_PASSWORD in .env}'
     volumes:
       - 'mariadb-data:/var/lib/mysql'
+      # Runs only when the data directory is empty (first start); existing installations: see README.
+      - './mariadb-init:/docker-entrypoint-initdb.d:ro'
+    networks:
+      - default
+      - website
     healthcheck:
       test: [ 'CMD', 'healthcheck.sh', '--connect', '--innodb_initialized' ]
       interval: 5s
@@ -94,13 +101,57 @@ services:
       bike-maintainer-backend:
         condition: service_healthy
 
+  # Website (bike-maintainer.de) with forum: official WordPress plus our theme and must-use plugins. WordPress
+  # updates core, plugins and the parent theme itself inside the volume; the image only brings our own code.
+  bike-maintainer-website:
+    image: 'ghcr.io/stargazer74/bike-maintainer-portal:${BM_WEBSITE_VERSION:-0}'
+    container_name: 'bike-maintainer-website'
+    restart: unless-stopped
+    environment:
+      - 'WORDPRESS_DB_HOST=bike-maintainer-mariadb'
+      - 'WORDPRESS_DB_NAME=wordpress'
+      - 'WORDPRESS_DB_USER=wordpress'
+      - 'WORDPRESS_DB_PASSWORD=${BM_WEBSITE_DB_PASSWORD:?set BM_WEBSITE_DB_PASSWORD in .env}'
+      # Behind the proxy: the image's wp-config already takes HTTPS from X-Forwarded-Proto; the admin stays on HTTPS.
+      - "WORDPRESS_CONFIG_EXTRA=define( 'FORCE_SSL_ADMIN', true );"
+      # Target of the "Zur App" links.
+      - 'BM_APP_URL=${BM_PUBLIC_URL:-https://app.bike-maintainer.de}'
+      # Own ALTCHA key for registration and lost password of website/forum – not the app's key.
+      - 'BM_ALTCHA_HMAC_KEY=${BM_WEBSITE_ALTCHA_HMAC_KEY:?set BM_WEBSITE_ALTCHA_HMAC_KEY in .env}'
+      # Mail via the same mailbox as the app (noreply@ at IONOS, STARTTLS on 587).
+      - 'BM_SMTP_HOST=${SPRING_MAIL_HOST:-smtp.ionos.de}'
+      - 'BM_SMTP_PORT=${SPRING_MAIL_PORT:-587}'
+      - 'BM_SMTP_USER=${SPRING_MAIL_USERNAME:-noreply@bike-maintainer.de}'
+      - 'BM_SMTP_PASSWORD=${SPRING_MAIL_PASSWORD:?set SPRING_MAIL_PASSWORD in .env}'
+      - 'BM_SMTP_FROM=${BM_MAIL_FROM:-noreply@bike-maintainer.de}'
+      # Only for the first installation with bm-setup (see README).
+      - 'BM_SITE_URL=${BM_WEBSITE_URL:-https://bike-maintainer.de}'
+      - 'BM_ADMIN_USER=${BM_WEBSITE_ADMIN_USER:-admin}'
+      - 'BM_ADMIN_EMAIL=${BM_WEBSITE_ADMIN_EMAIL:-}'
+      - 'BM_ADMIN_PASSWORD=${BM_WEBSITE_ADMIN_PASSWORD:-}'
+    volumes:
+      - 'website-data:/var/www/html'
+    # Reaches only the database (network "website"), not the backend; only the proxy reaches the website (as
+    # bike-maintainer-website:80). Outgoing traffic (updates, mail) goes through the proxy network.
+    networks:
+      - website
+      - proxy
+    depends_on:
+      bike-maintainer-mariadb:
+        condition: service_healthy
+
 volumes:
   mariadb-data:
+  website-data:
 
-# No ports are published for the app: the existing nginx-proxy-manager on the host reaches the frontend by service
-# name over this shared network (bike-maintainer-frontend:80). The frontend's nginx forwards /api/ to
+# No ports are published: the existing nginx-proxy-manager on the host reaches the frontend and the website by service
+# name over this shared network (bike-maintainer-frontend:80, bike-maintainer-website:80). The frontend's nginx forwards /api/ to
 # bike-maintainer-backend internally, so the backend stays in the default network only.
 networks:
+  # Website and database only: WordPress has the largest attack surface of the stack, so it must not reach the
+  # backend (including its management port). Internal: no route to the outside through this network.
+  website:
+    internal: true
   proxy:
     external: true
     name: '${PROXY_NETWORK:?set PROXY_NETWORK in .env}'
