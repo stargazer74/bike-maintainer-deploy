@@ -62,6 +62,8 @@ services:
       - 'SPRING_MAIL_PASSWORD=${SPRING_MAIL_PASSWORD:?set SPRING_MAIL_PASSWORD in .env}'
       - 'BM_MAIL_FROM=${BM_MAIL_FROM:-${SPRING_MAIL_USERNAME:-}}'
       - 'BM_PUBLIC_URL=${BM_PUBLIC_URL:?set BM_PUBLIC_URL in .env}'
+      # The app links to the website, its legal notice and privacy policy; empty = no links.
+      - 'BM_WEBSITE_URL=${BM_WEBSITE_URL:-}'
       - 'BM_ALTCHA_HMAC_KEY=${BM_ALTCHA_HMAC_KEY:?set BM_ALTCHA_HMAC_KEY in .env}'
       # One JSON line per log entry (ECS), so the monitoring (monitoring/) can filter by level and endpoint.
       - 'LOGGING_STRUCTURED_FORMAT_CONSOLE=ecs'

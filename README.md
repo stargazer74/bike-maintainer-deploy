@@ -144,6 +144,8 @@ Link. Dafür braucht die `.env` Zugang zu einem Absender-Postfach (`SPRING_MAIL_
 einen geheimen Schlüssel für das Captcha (`BM_ALTCHA_HMAC_KEY`, z. B. `openssl rand -hex 32`); ohne beide startet
 weder Compose noch das Backend. `BM_PUBLIC_URL` ist die öffentliche Adresse der App in den Links der Mails
 (Pflicht, z. B. `https://app.example.com`). Höchstens 100 Mails pro Tag; unbestätigte Konten werden nach 7 Tagen gelöscht.
+Mit `BM_WEBSITE_URL` (Adresse der Website, z. B. `https://www.example.com`) verlinkt die App auf Website, Impressum
+und Datenschutzerklärung; ohne den Wert zeigt sie keine solchen Links.
 
 Nach außen erreichbar ist nur das Frontend, und auch das nur über das Netz des nginx-proxy-manager. Die Datenbank
 veröffentlicht keinen Port, ihr Passwort (`BM_DB_PASSWORD`) steht in der `.env`. phpMyAdmin startet nur auf

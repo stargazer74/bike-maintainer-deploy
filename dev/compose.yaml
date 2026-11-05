@@ -82,6 +82,7 @@ services:
       - 'SPRING_APPLICATION_JSON={"spring":{"mail":{"properties":{"mail.smtp.ssl.trust":"bike-maintainer-mailpit"}}}}'
       - 'BM_MAIL_FROM=noreply@example.org'
       - 'BM_PUBLIC_URL=http://localhost:${APP_PORT:-8100}'
+      - 'BM_WEBSITE_URL=http://localhost:${WEBSITE_PORT:-8200}'
       # Public development key, never for operation.
       - 'BM_ALTCHA_HMAC_KEY=local-development-key-not-for-production'
       # JSON logs as in portal/, so the monitoring (monitoring/compose.dev.yaml) sees the same as in operation.
