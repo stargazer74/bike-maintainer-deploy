@@ -9,7 +9,7 @@ Ausfälle und Probleme des Portals früh bemerken, ohne aktiv nachzusehen: App o
 häufen sich, auffällige Log-Meldungen, Platte oder Speicher voll, Zertifikat läuft ab, Mail-Tageslimit fast erreicht,
 Angriffe auf Logins.
 
-**Erfolg:** Bei jedem der genannten Probleme kommt innerhalb weniger Minuten eine Mail an `alert@bike-maintainer.de`;
+**Erfolg:** Bei jedem der genannten Probleme kommt innerhalb weniger Minuten eine Mail an `BM_ALERT_EMAIL`;
 nach der Behebung eine Entwarnung. Logs aller Portal-Container sind in Grafana durchsuch- und filterbar.
 
 ## Abgrenzung
@@ -38,7 +38,7 @@ Lebenszyklus: Wird das Portal neu gestartet oder fällt es aus, läuft die Über
 
 | Container | Aufgabe | Speichergrenze |
 |---|---|---|
-| `bike-maintainer-alloy` | Sammelt alles: Logs der Container `bike-maintainer-*` (Docker-Socket, nur lesend), Host-Metriken (eingebauter Unix-Exporter, `/proc`, `/sys`, `/` nur lesend), Container-Metriken (eingebauter cAdvisor), Backend-Metriken (`bike-maintainer-backend:8081/actuator/prometheus`), Erreichbarkeits- und TLS-Checks (eingebauter Blackbox-Exporter) auf `https://app.bike-maintainer.de` und `https://bike-maintainer.de`. Kürzt IPs in Logs vor dem Versand. Schickt Metriken per Remote-Write an Prometheus, Logs an Loki. | 384 MB |
+| `bike-maintainer-alloy` | Sammelt alles: Logs der Container `bike-maintainer-*` (Docker-Socket, nur lesend), Host-Metriken (eingebauter Unix-Exporter, `/proc`, `/sys`, `/` nur lesend), Container-Metriken (eingebauter cAdvisor), Backend-Metriken (`bike-maintainer-backend:8081/actuator/prometheus`), Erreichbarkeits- und TLS-Checks (eingebauter Blackbox-Exporter) auf `https://app.example.com` und `https://example.com`. Kürzt IPs in Logs vor dem Versand. Schickt Metriken per Remote-Write an Prometheus, Logs an Loki. | 384 MB |
 | `bike-maintainer-prometheus` | Speichert Metriken (Remote-Write-Empfänger), Intervall 15 s, Aufbewahrung 30 Tage | 512 MB |
 | `bike-maintainer-loki` | Speichert Logs, Single-Binary, Dateisystem, Aufbewahrung 14 Tage (Compactor löscht) | 512 MB |
 | `bike-maintainer-grafana` | Dashboards, Log-Suche, Alarme per Mail | 384 MB (Grafana 13 belegt schon beim Start gut 200 MB) |
@@ -51,11 +51,11 @@ Alle Images mit fester Version (Major.Minor gepinnt), Daten in benannten Volumes
   und – aus `portal/` – das Backend. Nur so erreicht Alloy den Management-Port 8081. Beide Stacks deklarieren das Netz
   als `external`, keiner hängt vom Start des anderen ab.
 - **Proxy-Netz** (`PROXY_NETWORK`, wie in `portal/`): nur Grafana; der nginx-proxy-manager leitet
-  `monitoring.bike-maintainer.de` mit TLS auf `bike-maintainer-grafana:3000`.
+  `monitoring.example.com` mit TLS auf `bike-maintainer-grafana:3000`.
 - **Internes Netz** des Monitoring-Stacks: Prometheus und Loki, nur dort erreichbar.
 - Die Erreichbarkeits-Checks gehen bewusst über die öffentlichen Adressen (DNS, nginx-proxy-manager, TLS), damit
   Proxy und Zertifikat mitgeprüft werden. Voraussetzung: Der Server erreicht seine eigene öffentliche Adresse (bei
-  Root-Servern üblich; bei der Einrichtung mit `curl -I https://app.bike-maintainer.de` aus dem Alloy-Container
+  Root-Servern üblich; bei der Einrichtung mit `curl -I https://app.example.com` aus dem Alloy-Container
   prüfen).
 - Es werden **keine Ports** auf dem Host veröffentlicht. Port 8081 ist container-intern (`management.server.port`)
   und nicht über den Proxy erreichbar.
@@ -129,8 +129,8 @@ Die genauen Werte von `result`, `group` und `type` richten sich nach den im Code
 Grafana-managed Alerts, provisioniert aus `monitoring/grafana/provisioning/` (Datenquellen, Kontaktpunkt,
 Benachrichtigungsrichtlinie, Regeln, Dashboards) – Änderungen nur über Git.
 
-- **Mail:** SMTP IONOS (`smtp.ionos.de:587`, STARTTLS) als `noreply@bike-maintainer.de`, Passwort aus `.env`.
-  Empfänger `BM_ALERT_EMAIL`, Standard `alert@bike-maintainer.de` (Postfach oder Weiterleitung muss bei IONOS
+- **Mail:** SMTP des Mailanbieters (Port 587, STARTTLS) mit dem Absender-Postfach der App, Passwort aus `.env`.
+  Empfänger `BM_ALERT_EMAIL`, Pflichtwert (Postfach oder Weiterleitung muss beim Mailanbieter
   existieren).
 - **Richtlinie:** Gruppierung nach Regel, Wiederholung nach 4 h, Entwarnung bei Behebung.
 - **Regeln (Startwerte):**
@@ -158,7 +158,7 @@ Als JSON provisioniert:
 
 ## Zugriff und Sicherheit
 
-- Grafana nur über `https://monitoring.bike-maintainer.de` (nginx-proxy-manager, TLS); Admin-Passwort aus `.env`
+- Grafana nur über `https://monitoring.example.com` (nginx-proxy-manager, TLS); Admin-Passwort aus `.env`
   (Pflicht), keine Selbstregistrierung, kein anonymer Zugriff, keine Telemetrie/Update-Checks nach außen
   (`GF_ANALYTICS_*` aus), keine Gravatar-Bilder.
 - Prometheus, Loki und Port 8081 nur in internen Netzen.

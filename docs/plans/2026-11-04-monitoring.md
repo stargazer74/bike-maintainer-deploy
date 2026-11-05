@@ -3,7 +3,7 @@
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Metrics and structured logs from the backend, plus a self-contained monitoring stack (Alloy, Prometheus,
-Loki, Grafana) that alerts `alert@bike-maintainer.de` about portal problems.
+Loki, Grafana) that alerts `BM_ALERT_EMAIL` about portal problems.
 
 **Architecture:** The backend exposes Micrometer metrics (`bm.*` plus Spring defaults) on management port 8081 and
 logs ECS JSON in portal mode. In the deploy repo, `monitoring/` runs Alloy as the single collector (Docker logs with
@@ -29,8 +29,8 @@ Grafana Alloy, Prometheus, Loki, Grafana.
 - Memory limits: Alloy 384m, Prometheus 512m, Loki 512m, Grafana 256m.
 - Metrics: scrape interval 15s, retention 30d. Logs: retention 14d (336h).
 - IP truncation in logs: IPv4 last octet → `0`; IPv6 global unicast cut after the third group → `::`.
-- Alert recipient `BM_ALERT_EMAIL`, default `alert@bike-maintainer.de`; sender `noreply@bike-maintainer.de` via
-  `smtp.ionos.de:587` STARTTLS.
+- Alert recipient `BM_ALERT_EMAIL` (required); sender is the app's sending mailbox via
+  the mail provider's SMTP (port 587, STARTTLS).
 - Grafana: no sign-up, no anonymous access, analytics/update checks/gravatar off.
 - READMEs and tickets in German; code, comments and commit messages in English.
 
@@ -250,8 +250,8 @@ Grafana Alloy, Prometheus, Loki, Grafana.
   (`ERROR|WARN|INFO|DEBUG`, upper case), `stream`; Prometheus job names `backend`, `alloy-unix`, `alloy-cadvisor`,
   `blackbox` (label `target=app|website`); container names `bike-maintainer-{alloy,prometheus,loki,grafana}`.
 - Alloy reads from env: `BM_CONTAINER_PREFIX` (default `bike-maintainer-`), `BM_BACKEND_TARGET`
-  (default `bike-maintainer-backend:8081`), `BM_PROBE_APP_URL` (default `https://app.bike-maintainer.de`),
-  `BM_PROBE_WEBSITE_URL` (default `https://bike-maintainer.de`).
+  (default `bike-maintainer-backend:8081`), `BM_PROBE_APP_URL` (required, e.g. `https://app.example.com`),
+  `BM_PROBE_WEBSITE_URL` (required, e.g. `https://example.com`).
 
 - [ ] **Step 1: Compose:** four services with pinned Major.Minor tags (look up the current releases of
   `grafana/alloy`, `prom/prometheus`, `grafana/loki`, `grafana/grafana` at implementation time), `restart:
@@ -260,7 +260,7 @@ Grafana Alloy, Prometheus, Loki, Grafana.
   Alloy mounts read-only: `/var/run/docker.sock`, `/proc:/host/proc`, `/sys:/host/sys`, `/:/host/root`,
   `/var/lib/docker:/var/lib/docker` (cadvisor). Prometheus flags `--web.enable-remote-write-receiver`
   `--storage.tsdb.retention.time=30d`. Grafana env: `GF_SECURITY_ADMIN_PASSWORD=${BM_GRAFANA_ADMIN_PASSWORD:?}`,
-  `GF_SERVER_ROOT_URL=https://monitoring.bike-maintainer.de`, `GF_USERS_ALLOW_SIGN_UP=false`,
+  `GF_SERVER_ROOT_URL=https://monitoring.example.com`, `GF_USERS_ALLOW_SIGN_UP=false`,
   `GF_AUTH_ANONYMOUS_ENABLED=false`, `GF_ANALYTICS_REPORTING_ENABLED=false`, `GF_ANALYTICS_CHECK_FOR_UPDATES=false`,
   `GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES=false`, `GF_SECURITY_DISABLE_GRAVATAR=true`, SMTP `GF_SMTP_*` from `.env`.
 - [ ] **Step 2: Loki config:** single binary, filesystem storage, `limits_config.retention_period: 336h`,
@@ -302,8 +302,8 @@ Grafana Alloy, Prometheus, Loki, Grafana.
     `{container="bike-maintainer-dev-website"}` access lines show client IPs ending in `.0`;
   - `curl -s http://localhost:8100/actuator/prometheus | head -c 200` → not Prometheus text (Review Focus 3).
 - [ ] **Step 7: `monitoring/README.md`** (German): purpose, prerequisites (network, `PROXY_NETWORK`, `.env`),
-  start, proxy host `monitoring.bike-maintainer.de` → `bike-maintainer-grafana:3000` with TLS, DNS record,
-  self-reachability check (`docker exec bike-maintainer-alloy wget -qO- https://app.bike-maintainer.de` or the
+  start, proxy host `monitoring.example.com` → `bike-maintainer-grafana:3000` with TLS, DNS record,
+  self-reachability check (`docker exec bike-maintainer-alloy wget -qO- https://app.example.com` or the
   Alloy UI target page), memory check, dev usage, data protection paragraph (logs with truncated IPs, 14 days, no
   third parties) as text block for the privacy policy, note on nginx-proxy-manager access logs.
 - [ ] **Step 8: Commit** `Monitoring stack: Alloy, Prometheus, Loki, Grafana (#9)`.
@@ -317,7 +317,7 @@ Grafana Alloy, Prometheus, Loki, Grafana.
 
 **Interfaces:**
 - Consumes: datasource UIDs, labels and jobs from Task 9; metrics from Tasks 1–6.
-- Produces: contact point `email` → `${BM_ALERT_EMAIL}` (default `alert@bike-maintainer.de`); policy: group by
+- Produces: contact point `email` → `${BM_ALERT_EMAIL}` (required); policy: group by
   `alertname`, `group_wait 30s`, `group_interval 5m`, `repeat_interval 4h`; folder `Portal`.
 
 - [ ] **Step 1: Rules** (one per row; `for` = duration; NoData/ExecErr handling as given):
@@ -346,7 +346,7 @@ Grafana Alloy, Prometheus, Loki, Grafana.
 - [ ] **Step 4: Alarm test:** `docker stop bike-maintainer-dev-frontend` → within ~3 min mail "App … nicht erreichbar"
   in Mailpit; `docker start` → resolved mail. `docker stop bike-maintainer-dev-backend` → "Backend-Metriken fehlen"
   (Review Focus 4); start again.
-- [ ] **Step 5: README:** alert table, test procedure, mailbox `alert@` must exist at IONOS.
+- [ ] **Step 5: README:** alert table, test procedure, mailbox `alert@` must exist at the mail provider.
 - [ ] **Step 6: Commit** `Monitoring: alert rules and mail contact point (#9)`.
 
 ### Task 11: Dashboards

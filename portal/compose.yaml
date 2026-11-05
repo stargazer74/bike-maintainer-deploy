@@ -56,12 +56,12 @@ services:
       - 'BM_INITIAL_ADMIN_EMAIL=${BM_INITIAL_ADMIN_EMAIL:?set BM_INITIAL_ADMIN_EMAIL in .env}'
       - 'BM_INITIAL_ADMIN_PASSWORD=${BM_INITIAL_ADMIN_PASSWORD:?set BM_INITIAL_ADMIN_PASSWORD in .env}'
       # Registration emails and captcha (backend 0.3+). Secrets only in .env; compose refuses to start without them.
-      - 'SPRING_MAIL_HOST=${SPRING_MAIL_HOST:-smtp.ionos.de}'
+      - 'SPRING_MAIL_HOST=${SPRING_MAIL_HOST:?set SPRING_MAIL_HOST in .env}'
       - 'SPRING_MAIL_PORT=${SPRING_MAIL_PORT:-587}'
-      - 'SPRING_MAIL_USERNAME=${SPRING_MAIL_USERNAME:-noreply@bike-maintainer.de}'
+      - 'SPRING_MAIL_USERNAME=${SPRING_MAIL_USERNAME:?set SPRING_MAIL_USERNAME in .env}'
       - 'SPRING_MAIL_PASSWORD=${SPRING_MAIL_PASSWORD:?set SPRING_MAIL_PASSWORD in .env}'
-      - 'BM_MAIL_FROM=${BM_MAIL_FROM:-noreply@bike-maintainer.de}'
-      - 'BM_PUBLIC_URL=${BM_PUBLIC_URL:-https://app.bike-maintainer.de}'
+      - 'BM_MAIL_FROM=${BM_MAIL_FROM:-${SPRING_MAIL_USERNAME:-}}'
+      - 'BM_PUBLIC_URL=${BM_PUBLIC_URL:?set BM_PUBLIC_URL in .env}'
       - 'BM_ALTCHA_HMAC_KEY=${BM_ALTCHA_HMAC_KEY:?set BM_ALTCHA_HMAC_KEY in .env}'
       # One JSON line per log entry (ECS), so the monitoring (monitoring/) can filter by level and endpoint.
       - 'LOGGING_STRUCTURED_FORMAT_CONSOLE=ecs'
@@ -101,7 +101,7 @@ services:
       bike-maintainer-backend:
         condition: service_healthy
 
-  # Website (bike-maintainer.de) with forum: official WordPress plus our theme and must-use plugins. WordPress
+  # Website with forum: official WordPress plus our theme and must-use plugins. WordPress
   # updates core, plugins and the parent theme itself inside the volume; the image only brings our own code.
   bike-maintainer-website:
     image: 'ghcr.io/stargazer74/bike-maintainer-portal:${BM_WEBSITE_VERSION:-0}'
@@ -115,17 +115,17 @@ services:
       # Behind the proxy: the image's wp-config already takes HTTPS from X-Forwarded-Proto; the admin stays on HTTPS.
       - "WORDPRESS_CONFIG_EXTRA=define( 'FORCE_SSL_ADMIN', true );"
       # Target of the "Zur App" links.
-      - 'BM_APP_URL=${BM_PUBLIC_URL:-https://app.bike-maintainer.de}'
+      - 'BM_APP_URL=${BM_PUBLIC_URL:?set BM_PUBLIC_URL in .env}'
       # Own ALTCHA key for registration and lost password of website/forum – not the app's key.
       - 'BM_ALTCHA_HMAC_KEY=${BM_WEBSITE_ALTCHA_HMAC_KEY:?set BM_WEBSITE_ALTCHA_HMAC_KEY in .env}'
-      # Mail via the same mailbox as the app (noreply@ at IONOS, STARTTLS on 587).
-      - 'BM_SMTP_HOST=${SPRING_MAIL_HOST:-smtp.ionos.de}'
+      # Mail via the same mailbox as the app (STARTTLS on 587).
+      - 'BM_SMTP_HOST=${SPRING_MAIL_HOST:?set SPRING_MAIL_HOST in .env}'
       - 'BM_SMTP_PORT=${SPRING_MAIL_PORT:-587}'
-      - 'BM_SMTP_USER=${SPRING_MAIL_USERNAME:-noreply@bike-maintainer.de}'
+      - 'BM_SMTP_USER=${SPRING_MAIL_USERNAME:?set SPRING_MAIL_USERNAME in .env}'
       - 'BM_SMTP_PASSWORD=${SPRING_MAIL_PASSWORD:?set SPRING_MAIL_PASSWORD in .env}'
-      - 'BM_SMTP_FROM=${BM_MAIL_FROM:-noreply@bike-maintainer.de}'
+      - 'BM_SMTP_FROM=${BM_MAIL_FROM:-${SPRING_MAIL_USERNAME:-}}'
       # Only for the first installation with bm-setup (see README).
-      - 'BM_SITE_URL=${BM_WEBSITE_URL:-https://bike-maintainer.de}'
+      - 'BM_SITE_URL=${BM_WEBSITE_URL:-}'
       - 'BM_ADMIN_USER=${BM_WEBSITE_ADMIN_USER:-admin}'
       - 'BM_ADMIN_EMAIL=${BM_WEBSITE_ADMIN_EMAIL:-}'
       - 'BM_ADMIN_PASSWORD=${BM_WEBSITE_ADMIN_PASSWORD:-}'

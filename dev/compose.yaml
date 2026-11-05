@@ -48,7 +48,7 @@ services:
     depends_on:
       - bike-maintainer-mariadb
 
-  # Catches every mail of app and website. The backend insists on STARTTLS and SMTP login (as against IONOS), so
+  # Catches every mail of app and website. The backend insists on STARTTLS and SMTP login (as against a real mail provider), so
   # Mailpit offers STARTTLS with a self-signed certificate and accepts any login – or none, for WordPress.
   bike-maintainer-mailpit:
     image: 'axllent/mailpit:v1'
@@ -80,7 +80,7 @@ services:
       - 'SPRING_MAIL_PASSWORD=dev'
       # Trust Mailpit's self-signed certificate; everything else about mail is as in operation.
       - 'SPRING_APPLICATION_JSON={"spring":{"mail":{"properties":{"mail.smtp.ssl.trust":"bike-maintainer-mailpit"}}}}'
-      - 'BM_MAIL_FROM=noreply@bike-maintainer.de'
+      - 'BM_MAIL_FROM=noreply@example.org'
       - 'BM_PUBLIC_URL=http://localhost:${APP_PORT:-8100}'
       # Public development key, never for operation.
       - 'BM_ALTCHA_HMAC_KEY=local-development-key-not-for-production'
@@ -125,7 +125,7 @@ services:
       - 'BM_ALTCHA_HMAC_KEY=local-development-key-not-for-production'
       - 'BM_SMTP_HOST=bike-maintainer-mailpit'
       - 'BM_SMTP_PORT=1025'
-      - 'BM_SMTP_FROM=noreply@bike-maintainer.de'
+      - 'BM_SMTP_FROM=noreply@example.org'
       # For bm-setup (first installation).
       - 'BM_SITE_URL=http://localhost:${WEBSITE_PORT:-8200}'
       - 'BM_ADMIN_USER=${BM_WEBSITE_ADMIN_USER:-admin}'

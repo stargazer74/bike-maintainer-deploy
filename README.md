@@ -89,8 +89,8 @@ selbst ans Backend weiter. Im nginx-proxy-manager je ein Proxy-Host, jeweils mit
 
 | Domain | Ziel |
 |---|---|
-| `app.bike-maintainer.de` | `http://bike-maintainer-frontend:80` |
-| `bike-maintainer.de`, `www.bike-maintainer.de` | `http://bike-maintainer-website:80` |
+| App, z. B. `app.example.com` | `http://bike-maintainer-frontend:80` |
+| Website, z. B. `example.com`, `www.example.com` | `http://bike-maintainer-website:80` |
 
 DNS: `app.` und `www.` (zusätzlich zur Hauptdomain) auf den Server zeigen lassen.
 
@@ -140,10 +140,10 @@ Root-Passwort einmalig zurückgesetzt werden (MariaDB-Doku „Recover the root p
 `website-data` (Uploads, Plugins).
 
 **Registrierung (ab Backend 0.3):** Neue Nutzer registrieren sich selbst und bestätigen ihre E-Mail-Adresse per
-Link. Dafür braucht die `.env` das SMTP-Passwort von `noreply@bike-maintainer.de` (`SPRING_MAIL_PASSWORD`) und
+Link. Dafür braucht die `.env` Zugang zu einem Absender-Postfach (`SPRING_MAIL_HOST`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD`) und
 einen geheimen Schlüssel für das Captcha (`BM_ALTCHA_HMAC_KEY`, z. B. `openssl rand -hex 32`); ohne beide startet
-weder Compose noch das Backend. `BM_PUBLIC_URL` ist die Adresse der App in den Links der Mails (Standard
-`https://app.bike-maintainer.de`). Höchstens 100 Mails pro Tag; unbestätigte Konten werden nach 7 Tagen gelöscht.
+weder Compose noch das Backend. `BM_PUBLIC_URL` ist die öffentliche Adresse der App in den Links der Mails
+(Pflicht, z. B. `https://app.example.com`). Höchstens 100 Mails pro Tag; unbestätigte Konten werden nach 7 Tagen gelöscht.
 
 Nach außen erreichbar ist nur das Frontend, und auch das nur über das Netz des nginx-proxy-manager. Die Datenbank
 veröffentlicht keinen Port, ihr Passwort (`BM_DB_PASSWORD`) steht in der `.env`. phpMyAdmin startet nur auf
@@ -180,7 +180,7 @@ Klonen des ganzen Repos ist nicht nötig.
 ## Überwachung des Portals (`monitoring/`)
 
 Eigener Stack neben `portal/` (Grafana Alloy, Prometheus, Loki, Grafana): Alarme per Mail an
-`alert@bike-maintainer.de`, Dashboards und zentrale Logs mit gekürzten IP-Adressen. Einrichtung und Details in
+`BM_ALERT_EMAIL`, Dashboards und zentrale Logs mit gekürzten IP-Adressen. Einrichtung und Details in
 [`monitoring/README.md`](monitoring/README.md).
 
 ## Lokale Entwicklung: kompletter Stack (`dev/`)
@@ -220,7 +220,7 @@ docker compose exec -u www-data bike-maintainer-website bm-setup    # einmalig: 
 - Die Website-Datenbank `wordpress` legt `dev/mariadb-init/10-website.sh` beim allerersten Start an, mit eigenem
   Nutzer ohne Rechte auf die App-Daten (so wie für den Portal-Betrieb geplant). Die Datei darf nicht ausführbar sein:
   Der MariaDB-Entrypoint bindet nur nicht ausführbare Skripte ein und stellt nur dann `docker_process_sql` bereit.
-- Das Backend verlangt beim Mailversand STARTTLS und Anmeldung wie gegen IONOS; Mailpit bietet dazu STARTTLS mit
+- Das Backend verlangt beim Mailversand STARTTLS und Anmeldung wie bei einem echten Mailanbieter; Mailpit bietet dazu STARTTLS mit
   selbst signiertem Zertifikat und nimmt jede Anmeldung an.
 - Container heißen `bike-maintainer-dev-*` und nutzen eigene Ports, damit sie nicht mit einer `portal/`-Installation
   oder den Dev-Setups in den einzelnen Repos (Backend `8090`, Website `8095`) kollidieren.

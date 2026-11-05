@@ -26,8 +26,8 @@ services:
       # Which containers are collected (name prefix) and what is probed; overridden by compose.dev.yaml.
       - 'BM_CONTAINER_PREFIX=${BM_CONTAINER_PREFIX:-bike-maintainer-}'
       - 'BM_BACKEND_TARGET=${BM_BACKEND_TARGET:-bike-maintainer-backend:8081}'
-      - 'BM_PROBE_APP_URL=${BM_PROBE_APP_URL:-https://app.bike-maintainer.de}'
-      - 'BM_PROBE_WEBSITE_URL=${BM_PROBE_WEBSITE_URL:-https://bike-maintainer.de}'
+      - 'BM_PROBE_APP_URL=${BM_PROBE_APP_URL:?set BM_PROBE_APP_URL in .env}'
+      - 'BM_PROBE_WEBSITE_URL=${BM_PROBE_WEBSITE_URL:?set BM_PROBE_WEBSITE_URL in .env}'
       - 'BM_PROBE_MODULE=${BM_PROBE_MODULE:-https_2xx}'
     volumes:
       - './alloy/config.alloy:/etc/alloy/config.alloy:ro'
@@ -94,7 +94,7 @@ services:
     container_name: 'bike-maintainer-grafana'
     restart: unless-stopped
     environment:
-      - 'GF_SERVER_ROOT_URL=${BM_GRAFANA_URL:-https://monitoring.bike-maintainer.de}'
+      - 'GF_SERVER_ROOT_URL=${BM_GRAFANA_URL:?set BM_GRAFANA_URL in .env}'
       - 'GF_SECURITY_ADMIN_USER=admin'
       - 'GF_SECURITY_ADMIN_PASSWORD=${BM_GRAFANA_ADMIN_PASSWORD:?set BM_GRAFANA_ADMIN_PASSWORD in .env}'
       - 'GF_SECURITY_COOKIE_SECURE=${BM_GRAFANA_COOKIE_SECURE:-true}'
@@ -107,17 +107,17 @@ services:
       - 'GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES=false'
       - 'GF_ANALYTICS_FEEDBACK_LINKS_ENABLED=false'
       - 'GF_NEWS_NEWS_FEED_ENABLED=false'
-      # Alert mails via IONOS (STARTTLS), same mailbox as the app.
+      # Alert mails via SMTP with STARTTLS, same mailbox as the app.
       - 'GF_SMTP_ENABLED=true'
-      - 'GF_SMTP_HOST=${BM_SMTP_HOST:-smtp.ionos.de:587}'
-      - 'GF_SMTP_USER=${BM_SMTP_USER:-noreply@bike-maintainer.de}'
+      - 'GF_SMTP_HOST=${BM_SMTP_HOST:?set BM_SMTP_HOST in .env}'
+      - 'GF_SMTP_USER=${BM_SMTP_USER:?set BM_SMTP_USER in .env}'
       - 'GF_SMTP_PASSWORD=${BM_SMTP_PASSWORD:?set BM_SMTP_PASSWORD in .env}'
-      - 'GF_SMTP_FROM_ADDRESS=${BM_SMTP_FROM:-noreply@bike-maintainer.de}'
+      - 'GF_SMTP_FROM_ADDRESS=${BM_SMTP_FROM:-${BM_SMTP_USER:-}}'
       - 'GF_SMTP_FROM_NAME=Bike Maintainer Monitoring'
       - 'GF_SMTP_STARTTLS_POLICY=${BM_SMTP_STARTTLS_POLICY:-MandatoryStartTLS}'
       - 'GF_SMTP_SKIP_VERIFY=${BM_SMTP_SKIP_VERIFY:-false}'
       # Read by the alerting provisioning (contact point).
-      - 'BM_ALERT_EMAIL=${BM_ALERT_EMAIL:-alert@bike-maintainer.de}'
+      - 'BM_ALERT_EMAIL=${BM_ALERT_EMAIL:?set BM_ALERT_EMAIL in .env}'
     volumes:
       - './grafana/provisioning:/etc/grafana/provisioning:ro'
       - './grafana/dashboards:/var/lib/grafana/dashboards:ro'
