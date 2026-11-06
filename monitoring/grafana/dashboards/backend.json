@@ -191,7 +191,7 @@
     {
       "id": 5,
       "type": "timeseries",
-      "title": "Registrierung und Passwort (pro Stunde)",
+      "title": "Konten (pro Stunde)",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -220,6 +220,15 @@
           },
           "expr": "sum by (step) (increase(bm_auth_password_reset_total[1h]))",
           "legendFormat": "Passwort {{step}}"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(increase(bm_accounts_deleted_total[1h]))",
+          "legendFormat": "Konto gelöscht"
         }
       ],
       "fieldConfig": {
