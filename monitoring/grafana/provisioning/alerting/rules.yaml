@@ -328,7 +328,9 @@ groups:
             datasourceUid: prometheus
             model:
               refId: A
-              expr: 'max by (name) (time() - max_over_time(container_last_seen{name=~"bike-maintainer-(dev-)?(backend|frontend|mariadb|website)"}[24h]))'
+              # Newest last-seen per name first: a recreated container (update) gets a new ID and thus a new series;
+              # the old one stays in the 24h window and must not count as "missing".
+              expr: 'time() - max by (name) (max_over_time(container_last_seen{name=~"bike-maintainer-(dev-)?(backend|frontend|mariadb|website)"}[24h]))'
               instant: true
           - refId: C
             datasourceUid: __expr__
