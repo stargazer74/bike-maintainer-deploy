@@ -147,6 +147,21 @@ weder Compose noch das Backend. `BM_PUBLIC_URL` ist die öffentliche Adresse der
 Mit `BM_WEBSITE_URL` (Adresse der Website, z. B. `https://www.example.com`) verlinkt die App auf Website, Impressum
 und Datenschutzerklärung; ohne den Wert zeigt sie keine solchen Links.
 
+**Testphase und Abo über Polar (ab Backend 0.18):** Neue Konten haben eine kostenlose Testphase, danach braucht es ein
+Abo, das auf der Website über Polar abgeschlossen wird. Ohne die folgenden Werte in der `.env` startet weder Compose
+noch das Backend:
+
+- `BM_SUBSCRIPTION_TRIAL_DAYS`: Länge der Testphase in Tagen (Entscheidung des Betreibers, daher kein Standardwert).
+- In Polar (Organisation, Einstellungen): ein **Organization Access Token** mit den Rechten `checkouts:write`,
+  `customer_sessions:write`, `subscriptions:read` und `subscriptions:write` → `BM_POLAR_ACCESS_TOKEN`.
+- Das Abo-Produkt (jährlich) anlegen, seine ID → `BM_POLAR_PRODUCT_ID`.
+- Einen **Webhook-Endpunkt** `https://<BM_PUBLIC_URL>/api/v1/webhooks/polar`, Format *Raw*, mit den Ereignissen
+  `subscription.*`; das angezeigte Secret (`whsec_…`) → `BM_POLAR_WEBHOOK_SECRET`. Der Endpunkt braucht keine
+  Anmeldung; das Backend prüft die Signatur und holt den aktuellen Stand des Abos danach selbst bei Polar.
+- Zum Ausprobieren: Polar-Sandbox mit `BM_POLAR_API_URL=https://sandbox-api.polar.sh` und deren Werten.
+
+Polar erfährt nur die E-Mail-Adresse (für die Rechnung) und eine zufällige Kunden-Kennung, nie die interne Konto-ID.
+
 Nach außen erreichbar ist nur das Frontend, und auch das nur über das Netz des nginx-proxy-manager. Die Datenbank
 veröffentlicht keinen Port, ihr Passwort (`BM_DB_PASSWORD`) steht in der `.env`. phpMyAdmin startet nur auf
 Wunsch und lauscht nur auf `127.0.0.1` (Docker würde einen veröffentlichten Port sonst an einer Host-Firewall wie
@@ -227,4 +242,7 @@ docker compose exec -u www-data bike-maintainer-website bm-setup    # einmalig: 
 - Container heißen `bike-maintainer-dev-*` und nutzen eigene Ports, damit sie nicht mit einer `portal/`-Installation
   oder den Dev-Setups in den einzelnen Repos (Backend `8090`, Website `8095`) kollidieren.
 - Für die Arbeit am Website-Theme mit sofort sichtbaren Änderungen eignet sich `compose.yaml` im Portal-Repo besser.
+- Testphase und Abo: Die Testphase dauert hier 7 Tage (Testwert, `BM_SUBSCRIPTION_TRIAL_DAYS` in `.env`). Ohne
+  Sandbox-Werte von Polar in `.env` antwortet „Abo abschließen“ mit 503; mit ihnen läuft der Checkout gegen die
+  Polar-Sandbox. Webhooks von Polar erreichen den lokalen Stack nur über einen Tunnel.
 - Alles zurücksetzen: `docker compose down -v`.
