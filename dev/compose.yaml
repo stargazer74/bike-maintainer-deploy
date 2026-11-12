@@ -129,6 +129,9 @@ services:
       - "WORDPRESS_CONFIG_EXTRA=define( 'WP_DEVELOPMENT_MODE', 'theme' );"
       # Target of the "Zur App" links on the website.
       - 'BM_APP_URL=http://localhost:${APP_PORT:-8100}'
+      # Subscription offer on the website; set BM_SUBSCRIPTION_PRICE (e.g. in .env) to see it.
+      - 'BM_SUBSCRIPTION_PRICE=${BM_SUBSCRIPTION_PRICE:-}'
+      - 'BM_SUBSCRIPTION_TRIAL_DAYS=${BM_SUBSCRIPTION_TRIAL_DAYS:-7}'
       # ALTCHA on registration and lost password of the website/forum; public development key, never for operation.
       - 'BM_ALTCHA_HMAC_KEY=local-development-key-not-for-production'
       - 'BM_SMTP_HOST=bike-maintainer-mailpit'
