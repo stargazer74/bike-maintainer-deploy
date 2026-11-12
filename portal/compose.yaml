@@ -124,6 +124,9 @@ services:
       - "WORDPRESS_CONFIG_EXTRA=define( 'FORCE_SSL_ADMIN', true );"
       # Target of the "Zur App" links.
       - 'BM_APP_URL=${BM_PUBLIC_URL:?set BM_PUBLIC_URL in .env}'
+      # Subscription offer on the website (price card, FAQ, terms/withdrawal/cancellation links); no price = no offer.
+      - 'BM_SUBSCRIPTION_PRICE=${BM_SUBSCRIPTION_PRICE:-}'
+      - 'BM_SUBSCRIPTION_TRIAL_DAYS=${BM_SUBSCRIPTION_TRIAL_DAYS:?set BM_SUBSCRIPTION_TRIAL_DAYS in .env}'
       # Own ALTCHA key for registration and lost password of website/forum – not the app's key.
       - 'BM_ALTCHA_HMAC_KEY=${BM_WEBSITE_ALTCHA_HMAC_KEY:?set BM_WEBSITE_ALTCHA_HMAC_KEY in .env}'
       # Mail via the same mailbox as the app (STARTTLS on 587).

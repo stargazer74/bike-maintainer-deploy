@@ -159,6 +159,9 @@ noch das Backend:
   `subscription.*`; das angezeigte Secret (`whsec_…`) → `BM_POLAR_WEBHOOK_SECRET`. Der Endpunkt braucht keine
   Anmeldung; das Backend prüft die Signatur und holt den aktuellen Stand des Abos danach selbst bei Polar.
 - Zum Ausprobieren: Polar-Sandbox mit `BM_POLAR_API_URL=https://sandbox-api.polar.sh` und deren Werten.
+- `BM_SUBSCRIPTION_PRICE` (optional, ab Website 0.5): Jahrespreis brutto in Euro, den die Website zeigt (Karte
+  „Im Portal“, FAQ, Links zu AGB, Widerruf und „Verträge hier kündigen“). Leer = die Website zeigt noch kein Angebot.
+  Muss zum Preis des Produkts in Polar passen; das Produkt dort mit Preis **inklusive** Umsatzsteuer anlegen.
 
 Polar erfährt nur die E-Mail-Adresse (für die Rechnung) und eine zufällige Kunden-Kennung, nie die interne Konto-ID.
 
