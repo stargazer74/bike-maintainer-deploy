@@ -92,6 +92,7 @@ services:
       - 'BM_POLAR_ACCESS_TOKEN=${BM_POLAR_ACCESS_TOKEN:-not-configured}'
       - 'BM_POLAR_WEBHOOK_SECRET=${BM_POLAR_WEBHOOK_SECRET:-whsec_bm90LWNvbmZpZ3VyZWQ=}'
       - 'BM_POLAR_PRODUCT_ID=${BM_POLAR_PRODUCT_ID:-not-configured}'
+      - 'BM_POLAR_EARLY_END_ENABLED=${BM_POLAR_EARLY_END_ENABLED:-false}'
       # JSON logs as in portal/, so the monitoring (monitoring/compose.dev.yaml) sees the same as in operation.
       - 'LOGGING_STRUCTURED_FORMAT_CONSOLE=ecs'
     depends_on:
