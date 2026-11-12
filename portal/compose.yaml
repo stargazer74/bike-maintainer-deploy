@@ -65,6 +65,12 @@ services:
       # The app links to the website, its legal notice and privacy policy; empty = no links.
       - 'BM_WEBSITE_URL=${BM_WEBSITE_URL:-}'
       - 'BM_ALTCHA_HMAC_KEY=${BM_ALTCHA_HMAC_KEY:?set BM_ALTCHA_HMAC_KEY in .env}'
+      # Free trial and subscription via Polar (backend 0.18+). Values only in .env; compose refuses to start without them.
+      - 'BM_SUBSCRIPTION_TRIAL_DAYS=${BM_SUBSCRIPTION_TRIAL_DAYS:?set BM_SUBSCRIPTION_TRIAL_DAYS in .env}'
+      - 'BM_POLAR_API_URL=${BM_POLAR_API_URL:-https://api.polar.sh}'
+      - 'BM_POLAR_ACCESS_TOKEN=${BM_POLAR_ACCESS_TOKEN:?set BM_POLAR_ACCESS_TOKEN in .env}'
+      - 'BM_POLAR_WEBHOOK_SECRET=${BM_POLAR_WEBHOOK_SECRET:?set BM_POLAR_WEBHOOK_SECRET in .env}'
+      - 'BM_POLAR_PRODUCT_ID=${BM_POLAR_PRODUCT_ID:?set BM_POLAR_PRODUCT_ID in .env}'
       # One JSON line per log entry (ECS), so the monitoring (monitoring/) can filter by level and endpoint.
       - 'LOGGING_STRUCTURED_FORMAT_CONSOLE=ecs'
     # The image has neither curl nor wget; bash's /dev/tcp asks the actuator on the management port.
