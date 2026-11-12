@@ -363,7 +363,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "container_memory_working_set_bytes{name=~\"bike-maintainer-.*\"}",
+          "expr": "max by (name) (container_memory_working_set_bytes{name=~\"bike-maintainer-.*\"})",
           "legendFormat": "{{name}}"
         }
       ],
