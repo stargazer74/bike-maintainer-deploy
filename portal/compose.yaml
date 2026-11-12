@@ -71,6 +71,7 @@ services:
       - 'BM_POLAR_ACCESS_TOKEN=${BM_POLAR_ACCESS_TOKEN:?set BM_POLAR_ACCESS_TOKEN in .env}'
       - 'BM_POLAR_WEBHOOK_SECRET=${BM_POLAR_WEBHOOK_SECRET:?set BM_POLAR_WEBHOOK_SECRET in .env}'
       - 'BM_POLAR_PRODUCT_ID=${BM_POLAR_PRODUCT_ID:?set BM_POLAR_PRODUCT_ID in .env}'
+      - 'BM_POLAR_EARLY_END_ENABLED=${BM_POLAR_EARLY_END_ENABLED:-false}'
       # One JSON line per log entry (ECS), so the monitoring (monitoring/) can filter by level and endpoint.
       - 'LOGGING_STRUCTURED_FORMAT_CONSOLE=ecs'
     # The image has neither curl nor wget; bash's /dev/tcp asks the actuator on the management port.

@@ -159,6 +159,11 @@ noch das Backend:
   `subscription.*`; das angezeigte Secret (`whsec_…`) → `BM_POLAR_WEBHOOK_SECRET`. Der Endpunkt braucht keine
   Anmeldung; das Backend prüft die Signatur und holt den aktuellen Stand des Abos danach selbst bei Polar.
 - Zum Ausprobieren: Polar-Sandbox mit `BM_POLAR_API_URL=https://sandbox-api.polar.sh` und deren Werten.
+- `BM_POLAR_EARLY_END_ENABLED` (optional, ab Backend 0.18, Standard `false`): Kündigung **nach dem ersten Jahr**
+  automatisch umsetzen. Das Backend beendet das Abo dann einen Monat nach der Kündigung bei Polar und erstattet den
+  Rest der letzten Zahlung anteilig (§ 309 Nr. 9 BGB); die Admins bekommen jeweils eine Mail. Dafür braucht der
+  Token zusätzlich die Rechte `orders:read` und `refunds:write`. Ohne den Schalter bekommen die Admins nur eine Mail
+  und erledigen Ende und Erstattung von Hand in Polar. Vor dem Einschalten einmal in der Sandbox durchspielen.
 - `BM_SUBSCRIPTION_PRICE` (optional, ab Website 0.5): Jahrespreis brutto in Euro, den die Website zeigt (Karte
   „Im Portal“, FAQ, Links zu AGB, Widerruf und „Verträge hier kündigen“). Leer = die Website zeigt noch kein Angebot.
   Muss zum Preis des Produkts in Polar passen; das Produkt dort mit Preis **inklusive** Umsatzsteuer anlegen.
