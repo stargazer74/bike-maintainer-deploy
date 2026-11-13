@@ -65,13 +65,14 @@ services:
       # The app links to the website, its legal notice and privacy policy; empty = no links.
       - 'BM_WEBSITE_URL=${BM_WEBSITE_URL:-}'
       - 'BM_ALTCHA_HMAC_KEY=${BM_ALTCHA_HMAC_KEY:?set BM_ALTCHA_HMAC_KEY in .env}'
-      # Free trial and subscription via Polar (backend 0.18+). Values only in .env; compose refuses to start without them.
+      # Free trial and subscription via Paddle (backend 0.19+). Values only in .env; compose refuses to start without them.
       - 'BM_SUBSCRIPTION_TRIAL_DAYS=${BM_SUBSCRIPTION_TRIAL_DAYS:?set BM_SUBSCRIPTION_TRIAL_DAYS in .env}'
-      - 'BM_POLAR_API_URL=${BM_POLAR_API_URL:-https://api.polar.sh}'
-      - 'BM_POLAR_ACCESS_TOKEN=${BM_POLAR_ACCESS_TOKEN:?set BM_POLAR_ACCESS_TOKEN in .env}'
-      - 'BM_POLAR_WEBHOOK_SECRET=${BM_POLAR_WEBHOOK_SECRET:?set BM_POLAR_WEBHOOK_SECRET in .env}'
-      - 'BM_POLAR_PRODUCT_ID=${BM_POLAR_PRODUCT_ID:?set BM_POLAR_PRODUCT_ID in .env}'
-      - 'BM_POLAR_EARLY_END_ENABLED=${BM_POLAR_EARLY_END_ENABLED:-false}'
+      - 'BM_PADDLE_API_URL=${BM_PADDLE_API_URL:-https://api.paddle.com}'
+      - 'BM_PADDLE_API_KEY=${BM_PADDLE_API_KEY:?set BM_PADDLE_API_KEY in .env}'
+      - 'BM_PADDLE_WEBHOOK_SECRET=${BM_PADDLE_WEBHOOK_SECRET:?set BM_PADDLE_WEBHOOK_SECRET in .env}'
+      - 'BM_PADDLE_PRICE_ID=${BM_PADDLE_PRICE_ID:?set BM_PADDLE_PRICE_ID in .env}'
+      - 'BM_PADDLE_CLIENT_TOKEN=${BM_PADDLE_CLIENT_TOKEN:?set BM_PADDLE_CLIENT_TOKEN in .env}'
+      - 'BM_EARLY_END_ENABLED=${BM_EARLY_END_ENABLED:-false}'
       # One JSON line per log entry (ECS), so the monitoring (monitoring/) can filter by level and endpoint.
       - 'LOGGING_STRUCTURED_FORMAT_CONSOLE=ecs'
     # The image has neither curl nor wget; bash's /dev/tcp asks the actuator on the management port.
