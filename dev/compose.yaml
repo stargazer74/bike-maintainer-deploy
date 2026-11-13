@@ -85,14 +85,15 @@ services:
       - 'BM_WEBSITE_URL=http://localhost:${WEBSITE_PORT:-8200}'
       # Public development key, never for operation.
       - 'BM_ALTCHA_HMAC_KEY=local-development-key-not-for-production'
-      # Trial and Polar as in operation, but against the Polar sandbox. Without sandbox values in .env the stack starts
-      # anyway and the checkout answers 503; the trial length is a test value, not the one of the operation.
+      # Trial and Paddle as in operation, but against the Paddle sandbox. Without sandbox values in .env the stack
+      # starts anyway and the checkout answers 503; the trial length is a test value, not the one of the operation.
       - 'BM_SUBSCRIPTION_TRIAL_DAYS=${BM_SUBSCRIPTION_TRIAL_DAYS:-7}'
-      - 'BM_POLAR_API_URL=https://sandbox-api.polar.sh'
-      - 'BM_POLAR_ACCESS_TOKEN=${BM_POLAR_ACCESS_TOKEN:-not-configured}'
-      - 'BM_POLAR_WEBHOOK_SECRET=${BM_POLAR_WEBHOOK_SECRET:-whsec_bm90LWNvbmZpZ3VyZWQ=}'
-      - 'BM_POLAR_PRODUCT_ID=${BM_POLAR_PRODUCT_ID:-not-configured}'
-      - 'BM_POLAR_EARLY_END_ENABLED=${BM_POLAR_EARLY_END_ENABLED:-false}'
+      - 'BM_PADDLE_API_URL=https://sandbox-api.paddle.com'
+      - 'BM_PADDLE_API_KEY=${BM_PADDLE_API_KEY:-not-configured}'
+      - 'BM_PADDLE_WEBHOOK_SECRET=${BM_PADDLE_WEBHOOK_SECRET:-not-configured}'
+      - 'BM_PADDLE_PRICE_ID=${BM_PADDLE_PRICE_ID:-not-configured}'
+      - 'BM_PADDLE_CLIENT_TOKEN=${BM_PADDLE_CLIENT_TOKEN:-not-configured}'
+      - 'BM_EARLY_END_ENABLED=${BM_EARLY_END_ENABLED:-false}'
       # JSON logs as in portal/, so the monitoring (monitoring/compose.dev.yaml) sees the same as in operation.
       - 'LOGGING_STRUCTURED_FORMAT_CONSOLE=ecs'
     depends_on:

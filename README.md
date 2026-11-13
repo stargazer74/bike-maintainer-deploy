@@ -147,28 +147,42 @@ weder Compose noch das Backend. `BM_PUBLIC_URL` ist die öffentliche Adresse der
 Mit `BM_WEBSITE_URL` (Adresse der Website, z. B. `https://www.example.com`) verlinkt die App auf Website, Impressum
 und Datenschutzerklärung; ohne den Wert zeigt sie keine solchen Links.
 
-**Testphase und Abo über Polar (ab Backend 0.18):** Neue Konten haben eine kostenlose Testphase, danach braucht es ein
-Abo, das auf der Website über Polar abgeschlossen wird. Ohne die folgenden Werte in der `.env` startet weder Compose
-noch das Backend:
+**Testphase und Abo über Paddle (ab Backend 0.19):** Neue Konten haben eine kostenlose Testphase, danach braucht es
+ein Abo. Verkäufer gegenüber den Kunden ist Paddle (Merchant of Record); bezahlt wird auf der Bezahlseite der App
+(`/abo/bezahlen`), die dafür als einzige Seite Paddle.js lädt. Ohne die folgenden Werte in der `.env` startet weder
+Compose noch das Backend:
 
 - `BM_SUBSCRIPTION_TRIAL_DAYS`: Länge der Testphase in Tagen (Entscheidung des Betreibers, daher kein Standardwert).
-- In Polar (Organisation, Einstellungen): ein **Organization Access Token** mit den Rechten `checkouts:write`,
-  `customer_sessions:write`, `subscriptions:read` und `subscriptions:write` → `BM_POLAR_ACCESS_TOKEN`.
-- Das Abo-Produkt (jährlich) anlegen, seine ID → `BM_POLAR_PRODUCT_ID`.
-- Einen **Webhook-Endpunkt** `https://<BM_PUBLIC_URL>/api/v1/webhooks/polar`, Format *Raw*, mit den Ereignissen
-  `subscription.*`; das angezeigte Secret (`whsec_…`) → `BM_POLAR_WEBHOOK_SECRET`. Der Endpunkt braucht keine
-  Anmeldung; das Backend prüft die Signatur und holt den aktuellen Stand des Abos danach selbst bei Polar.
-- Zum Ausprobieren: Polar-Sandbox mit `BM_POLAR_API_URL=https://sandbox-api.polar.sh` und deren Werten.
-- `BM_POLAR_EARLY_END_ENABLED` (optional, ab Backend 0.18, Standard `false`): Kündigung **nach dem ersten Jahr**
-  automatisch umsetzen. Das Backend beendet das Abo dann einen Monat nach der Kündigung bei Polar und erstattet den
-  Rest der letzten Zahlung anteilig (§ 309 Nr. 9 BGB); die Admins bekommen jeweils eine Mail. Dafür braucht der
-  Token zusätzlich die Rechte `orders:read` und `refunds:write`. Ohne den Schalter bekommen die Admins nur eine Mail
-  und erledigen Ende und Erstattung von Hand in Polar. Vor dem Einschalten einmal in der Sandbox durchspielen.
+- In Paddle unter *Developer tools → Authentication*: einen **API-Key** mit Lese- und Schreibrechten für Kunden,
+  Transaktionen, Abos, Anpassungen (Erstattungen) und Kundenportal-Sitzungen → `BM_PADDLE_API_KEY`; einen
+  **Client-side token** → `BM_PADDLE_CLIENT_TOKEN` (öffentlich, die Bezahlseite bekommt ihn über `GET /api/v1/config`).
+- Unter *Catalog*: das Abo-Produkt mit einem **jährlichen Preis**, Steuermodus *inklusive* (Bruttopreis) → seine ID
+  (`pri_…`) → `BM_PADDLE_PRICE_ID`.
+- Unter *Checkout → Checkout settings*: **Default payment link** `https://<BM_PUBLIC_URL>/abo/bezahlen`; die Domain
+  muss Paddle vorher freigeben (Domain-Prüfung der Website: Preise, AGB, Erstattungen, Datenschutzerklärung).
+- Unter *Developer tools → Notifications*: ein **Notification destination** (Webhook)
+  `https://<BM_PUBLIC_URL>/api/v1/webhooks/paddle` mit den Ereignissen `subscription.*`; dessen Secret key
+  (`pdl_ntfset_…`) → `BM_PADDLE_WEBHOOK_SECRET`. Der Endpunkt braucht keine Anmeldung; das Backend prüft die Signatur
+  und holt den aktuellen Stand des Abos danach selbst bei Paddle.
+- **Paddle Retain ausgeschaltet lassen** (Datenschutz: kein zusätzliches Tracking auf der Bezahlseite).
+- Zum Ausprobieren: Paddle-Sandbox mit `BM_PADDLE_API_URL=https://sandbox-api.paddle.com` und deren Werten
+  (Client-side token `test_…`); die Bezahlseite läuft dann automatisch gegen die Sandbox.
+- `BM_EARLY_END_ENABLED` (optional, Standard `false`): Kündigung **nach dem ersten Jahr** automatisch umsetzen. Das
+  Backend beendet das Abo dann einen Monat nach der Kündigung bei Paddle und erstattet den Rest der letzten Zahlung
+  anteilig (§ 309 Nr. 9 BGB), ebenso beim Löschen eines Kontos nach dem ersten Jahr; die Admins bekommen jeweils eine
+  Mail. Ohne den Schalter bekommen die Admins nur eine Mail und erledigen Ende und Erstattung von Hand in Paddle. Vor
+  dem Einschalten einmal in der Sandbox durchspielen. (Bis Backend 0.18 hieß der Schalter
+  `BM_POLAR_EARLY_END_ENABLED`.)
 - `BM_SUBSCRIPTION_PRICE` (optional, ab Website 0.5): Jahrespreis brutto in Euro, den die Website zeigt (Karte
   „Im Portal“, FAQ, Links zu AGB, Widerruf und „Verträge hier kündigen“). Leer = die Website zeigt noch kein Angebot.
-  Muss zum Preis des Produkts in Polar passen; das Produkt dort mit Preis **inklusive** Umsatzsteuer anlegen.
+  Muss zum Preis in Paddle passen.
 
-Polar erfährt nur die E-Mail-Adresse (für die Rechnung) und eine zufällige Kunden-Kennung, nie die interne Konto-ID.
+Das Backend schickt Paddle nur die E-Mail-Adresse (für die Rechnung) und eine zufällige Kunden-Kennung, nie die interne
+Konto-ID. Was Paddle.js auf der Bezahlseite selbst erhebt (Zahlungsdaten, Betrugsprävention), gehört in die
+Datenschutzerklärung der Website.
+
+**Umstieg von Polar (Backend 0.18 → 0.19):** Die `BM_POLAR_*`-Werte aus der `.env` entfernen und die `BM_PADDLE_*`-Werte
+eintragen. Die Migration löscht die Polar-Abos aus der Datenbank (Polar lief nur gegen die Sandbox).
 
 Nach außen erreichbar ist nur das Frontend, und auch das nur über das Netz des nginx-proxy-manager. Die Datenbank
 veröffentlicht keinen Port, ihr Passwort (`BM_DB_PASSWORD`) steht in der `.env`. phpMyAdmin startet nur auf
@@ -251,6 +265,7 @@ docker compose exec -u www-data bike-maintainer-website bm-setup    # einmalig: 
   oder den Dev-Setups in den einzelnen Repos (Backend `8090`, Website `8095`) kollidieren.
 - Für die Arbeit am Website-Theme mit sofort sichtbaren Änderungen eignet sich `compose.yaml` im Portal-Repo besser.
 - Testphase und Abo: Die Testphase dauert hier 7 Tage (Testwert, `BM_SUBSCRIPTION_TRIAL_DAYS` in `.env`). Ohne
-  Sandbox-Werte von Polar in `.env` antwortet „Abo abschließen“ mit 503; mit ihnen läuft der Checkout gegen die
-  Polar-Sandbox. Webhooks von Polar erreichen den lokalen Stack nur über einen Tunnel.
+  Sandbox-Werte von Paddle in `.env` antwortet „Abo abschließen“ mit 503; mit ihnen läuft der Checkout gegen die
+  Paddle-Sandbox (Default payment link dort `http://localhost:8100/abo/bezahlen`). Webhooks von Paddle erreichen den
+  lokalen Stack nur über einen Tunnel.
 - Alles zurücksetzen: `docker compose down -v`.
