@@ -86,6 +86,9 @@ Im Grafana-Ordner **Portal** (Dateien in `grafana/dashboards/`, Änderungen übe
   Registrierungen, Passwort-Zurücksetzen und gelöschte Konten, Mails und Tageslimit, PDF-Erzeugung. Bedeutung der
   Metriken: `docs/metrics.md` im Backend-Repo.
 - **Logs:** ERROR-Zeilen pro Container, Logs mit Filter nach Container und Level und einem Suchfeld.
+  Alle Zeilen einer API-Anfrage findet man über ihre Trace-ID im Suchfeld: das Zugriffs-Log des Frontends endet
+  mit `trace_id=…`, die Backend-Zeilen enthalten dieselbe ID als `traceId`. Die „Fehler-ID“, die Web- und
+  Android-App bei einem Serverfehler anzeigen, sind deren erste 8 Zeichen – einfach so ins Suchfeld eintragen.
 
 Neu entstandene Zähler zeigen ihr allererstes Ereignis nicht (Prometheus braucht zwei Messpunkte für `increase`).
 
