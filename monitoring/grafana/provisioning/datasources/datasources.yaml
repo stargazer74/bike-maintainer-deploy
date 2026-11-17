@@ -14,3 +14,19 @@ datasources:
     access: proxy
     url: http://bike-maintainer-loki:3100
     editable: false
+    # The trace ID in the details of a log line links to the Logs dashboard, filtered to all lines of that request
+    # (nginx and backend). Backend lines carry it as JSON field traceId (a label after `| json`), nginx access log
+    # lines as trace_id=… at the end. Searches the whole retention period (14 days), as the request may be older
+    # than the dashboard's default range. $$ is a literal $: provisioning replaces ${…} with environment variables.
+    jsonData:
+      derivedFields:
+        - name: traceId
+          matcherType: label
+          matcherRegex: traceId
+          url: /d/portal-logs/logs?var-trace=$${__value.raw}&from=now-14d&to=now
+          urlDisplayLabel: Alle Zeilen dieser Anfrage
+        - name: trace_id
+          matcherType: regex
+          matcherRegex: 'trace_id=([0-9a-f]{32})'
+          url: /d/portal-logs/logs?var-trace=$${__value.raw}&from=now-14d&to=now
+          urlDisplayLabel: Alle Zeilen dieser Anfrage
