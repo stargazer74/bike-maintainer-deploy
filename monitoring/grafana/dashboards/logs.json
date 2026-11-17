@@ -6,7 +6,7 @@
   ],
   "timezone": "browser",
   "schemaVersion": 41,
-  "version": 1,
+  "version": 2,
   "refresh": "1m",
   "time": {
     "from": "now-1h",
@@ -54,6 +54,18 @@
       {
         "name": "search",
         "label": "Suche",
+        "type": "textbox",
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        },
+        "description": "Ohne Unterscheidung von Groß- und Kleinschreibung"
+      },
+      {
+        "name": "trace",
+        "label": "Trace-ID",
+        "description": "Trace-ID oder Fehler-ID (die ersten 8 Zeichen) einer Anfrage",
         "type": "textbox",
         "query": "",
         "current": {
@@ -116,7 +128,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "{container=~\"$container\", level=~\"$level\"} |= `$search`"
+          "expr": "{container=~\"$container\", level=~\"$level\"} |= `$trace` |~ `(?i)${search:regex}` | json | drop __error__, __error_details__ | line_format `{{ if .message }}{{ .message }}{{ if .error_stack_trace }}{{ \"\\n\" }}{{ .error_stack_trace }}{{ end }}{{ else }}{{ __line__ }}{{ end }}`"
         }
       ],
       "fieldConfig": {
@@ -128,7 +140,8 @@
         "wrapLogMessage": true,
         "sortOrder": "Descending",
         "enableLogDetails": true
-      }
+      },
+      "description": "JSON-Zeilen des Backends zeigen nur die Meldung (bei Exceptions mit Stacktrace); Logger, traceId, http.route usw. stehen in den Details der Zeile. Ein Klick auf die Trace-ID dort zeigt alle Zeilen dieser Anfrage."
     }
   ]
 }

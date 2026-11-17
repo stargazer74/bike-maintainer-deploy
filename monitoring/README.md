@@ -85,10 +85,16 @@ Im Grafana-Ordner **Portal** (Dateien in `grafana/dashboards/`, Änderungen übe
 - **Backend:** JVM-Heap, Datenbank-Verbindungen, Anmeldungen, Schutzmechanismen (Rate-Limit, ALTCHA, Kontosperren),
   Registrierungen, Passwort-Zurücksetzen und gelöschte Konten, Mails und Tageslimit, PDF-Erzeugung. Bedeutung der
   Metriken: `docs/metrics.md` im Backend-Repo.
-- **Logs:** ERROR-Zeilen pro Container, Logs mit Filter nach Container und Level und einem Suchfeld.
-  Alle Zeilen einer API-Anfrage findet man über ihre Trace-ID im Suchfeld: das Zugriffs-Log des Frontends endet
-  mit `trace_id=…`, die Backend-Zeilen enthalten dieselbe ID als `traceId`. Die „Fehler-ID“, die Web- und
-  Android-App bei einem Serverfehler anzeigen, sind deren erste 8 Zeichen – einfach so ins Suchfeld eintragen.
+- **Logs:** ERROR-Zeilen pro Container, Logs mit Filter nach Container, Level und Trace-ID sowie einem Suchfeld.
+  - Vom Backend (JSON) erscheint nur die Meldung, bei Exceptions mit Stacktrace. Logger, Thread, `traceId`,
+    `http.route` usw. stehen in den Details der Zeile (aufklappen). Zeilen anderer Container bleiben unverändert.
+  - Die Suche unterscheidet nicht zwischen Groß- und Kleinschreibung und sucht Sonderzeichen wörtlich.
+  - **Trace-ID:** zeigt alle Zeilen einer API-Anfrage – das Zugriffs-Log des Frontends (`trace_id=…`) und die
+    Backend-Zeilen (`traceId`). Die „Fehler-ID“, die Web- und Android-App bei einem Serverfehler anzeigen, sind die
+    ersten 8 Zeichen davon; sie reichen als Eingabe. Liegt die Anfrage länger zurück, den Zeitraum oben rechts
+    vergrößern.
+  - In den Details einer Zeile ist die Trace-ID ein Link („Alle Zeilen dieser Anfrage“), der das Dashboard auf diese
+    Anfrage filtert, über die ganzen 14 Tage.
 
 Neu entstandene Zähler zeigen ihr allererstes Ereignis nicht (Prometheus braucht zwei Messpunkte für `increase`).
 
