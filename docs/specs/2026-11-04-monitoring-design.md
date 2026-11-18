@@ -1,6 +1,7 @@
 # Überwachung des Portal-Betriebs – Design
 
-Stand: 2026-11-04 · Tickets: stargazer74/bike-maintainer-deploy#9 (Stack), stargazer74/bike-maintainer-backend#71
+Stand: 2026-11-04, nachgezogen 2026-11-18 (Socket-Proxy, Schwärzen in Alloy, Trace-ID backend#168, Logs-Dashboard
+deploy#32) · Tickets: stargazer74/bike-maintainer-deploy#9 (Stack), stargazer74/bike-maintainer-backend#71
 (Anwendungsmetriken)
 
 ## Ziel
@@ -14,8 +15,8 @@ nach der Behebung eine Entwarnung. Logs aller Portal-Container sind in Grafana d
 
 ## Abgrenzung
 
-- **Nur der Portal-Betrieb** (`portal/`): App (Backend, Frontend, MariaDB), Website (WordPress, sobald
-  stargazer74/bike-maintainer-deploy#7 umgesetzt ist) und der Host. Der Haushaltsmodus (`household/`) wird nicht
+- **Nur der Portal-Betrieb** (`portal/`): App (Backend, Frontend, MariaDB), Website (WordPress,
+  stargazer74/bike-maintainer-deploy#7) und der Host. Der Haushaltsmodus (`household/`) wird nicht
   überwacht und bekommt nichts davon.
 - **Alles läuft auf dem Portal-Server.** Ein Totalausfall des Servers (oder des Monitoring-Stacks selbst) wird nicht
   gemeldet – bewusst in Kauf genommen; ein Check von außen kann später ergänzt werden.
@@ -42,6 +43,7 @@ Lebenszyklus: Wird das Portal neu gestartet oder fällt es aus, läuft die Über
 | `bike-maintainer-prometheus` | Speichert Metriken (Remote-Write-Empfänger), Intervall 15 s, Aufbewahrung 30 Tage | 512 MB |
 | `bike-maintainer-loki` | Speichert Logs, Single-Binary, Dateisystem, Aufbewahrung 14 Tage (Compactor löscht) | 512 MB |
 | `bike-maintainer-grafana` | Dashboards, Log-Suche, Alarme per Mail | 384 MB (Grafana 13 belegt schon beim Start gut 200 MB) |
+| `bike-maintainer-docker-proxy` | Einziger Zugang zum Docker-Socket (tecnativa/docker-socket-proxy), nur lesende Abfragen zu Containern, Netzwerken, Info und Version; Alloy spricht die Docker-API nur über ihn an | 64 MB |
 
 Alle Images mit fester Version (Major.Minor gepinnt), Daten in benannten Volumes.
 
@@ -74,6 +76,13 @@ Alle Images mit fester Version (Major.Minor gepinnt), Daten in benannten Volumes
 - **IP-Kürzung vor dem Speichern** (Alloy, `loki.process`/`stage.replace`): IPv4 auf das letzte Byte genullt
   (`203.0.113.17` → `203.0.113.0`), IPv6 auf /48 (`2001:db8:abcd:12::1` → `2001:db8:abcd::`). Gilt für alle
   Container. Rate-Limit und Kontosperre im Backend arbeiten unverändert mit vollen IPs im Speicher.
+- **Schwärzen vor dem Speichern** (ebenfalls Alloy): URL-Parameter `token=`, `key=` und `code=` (die Links aus den
+  Konto-Mails stehen sonst im Zugriffs-Log des Frontends) und der Teil vor dem `@` von E-Mail-Adressen.
+- **Trace-ID** (backend#168): Der nginx des Frontends erzeugt je Anfrage eine ID (`$request_id`), schreibt sie als
+  `trace_id=…` ins Zugriffs-Log, gibt sie als `traceparent` ans Backend (dort `traceId`/`spanId` in jeder Zeile,
+  Micrometer Tracing ohne Export) und als `X-Request-Id` zurück; Web- und Android-App zeigen bei 5xx die ersten
+  8 Zeichen als Fehler-ID. Die ID ist bewusst **kein** Loki-Label (ein neuer Wert pro Anfrage), sondern wird über
+  einen Zeilenfilter gesucht.
 - Aufbewahrung **14 Tage**, danach löscht der Loki-Compactor.
 - Datenschutzerklärung: Hinweis auf Server-Logs mit gekürzten IPs, 14 Tage (README nennt den Textbaustein).
 
@@ -102,7 +111,9 @@ Alle Images mit fester Version (Major.Minor gepinnt), Daten in benannten Volumes
 | `bm.report.generated` | Timer | `type=report\|checklist`, `result=success\|failure` |
 
 Die genauen Werte von `result`, `group` und `type` richten sich nach den im Code vorhandenen Fällen; sie werden in
-`docs/metrics.md` festgehalten.
+`docs/metrics.md` festgehalten. Die Tabelle zeigt den ersten Stand; seither sind u. a. `bm.auth.device_login`,
+`bm.auth.device_session`, `bm.accounts.*` und `bm.subscription.*` sowie weitere Werte von `type` hinzugekommen –
+maßgeblich ist `docs/metrics.md` im Backend.
 
 ### Strukturierte Logs
 
@@ -110,6 +121,8 @@ Die genauen Werte von `result`, `group` und `type` richten sich nach den im Code
   und lokale Entwicklung behalten Textlogs.
 - Ein Request-Filter legt `http.method` und das **Pfad-Muster** (`/api/v1/vehicles/{vehicleId}`, nie die konkrete URL,
   keine Query-Parameter) in den MDC und räumt ihn nach der Anfrage wieder ab.
+- Micrometer Tracing (Brave, backend#169) legt `traceId` und `spanId` in den MDC, übernommen aus dem `traceparent`
+  des Frontend-nginx; Sampling 0, es wird nichts exportiert.
 - Bestehende Log-Ausgaben werden durchgesehen: keine E-Mail-Adressen (Mail-Logs maskieren bereits), Tokens,
   Passwörter oder freien Nutzereingaben.
 
@@ -154,7 +167,10 @@ Als JSON provisioniert:
 1. **Portal-Überblick:** Erreichbarkeit, Zertifikatsablauf, Anfragen/Fehlerquote, Antwortzeiten p50/p95, Host
    (CPU, RAM, Platte), Speicher pro Container.
 2. **Backend:** JVM, Verbindungspool, Logins und Schutz, Mails und Tageslimit, Berichte.
-3. **Logs:** Filter nach Container und Level, Volltextsuche.
+3. **Logs:** Filter nach Container, Level und Trace-ID, Suche ohne Unterscheidung von Groß- und Kleinschreibung
+   (Sonderzeichen wörtlich). JSON-Zeilen des Backends zeigen nur die Meldung (bei Exceptions mit Stacktrace), die
+   Felder stehen in den Zeilendetails; die Trace-ID dort verlinkt auf alle Zeilen der Anfrage (abgeleitete Felder
+   der Loki-Datenquelle, deploy#32).
 
 ## Zugriff und Sicherheit
 
