@@ -232,13 +232,13 @@ Unveröffentlichtes. Nur für die Entwicklung, nie für den Betrieb (feste Entwi
 Voraussetzung: alle Repos nebeneinander ausgecheckt, dazu Java 25, Maven, Node 24 und Docker.
 
 ```
-bike-maintainer-api/  bike-maintainer-backend/  bike-maintainer-frontend/  bike-maintainer-portal/  bike-maintainer-deploy/
+bike-maintainer-api/  bike-maintainer-templates/  bike-maintainer-backend/  bike-maintainer-frontend/  bike-maintainer-portal/  bike-maintainer-deploy/
 ```
 
 ```bash
 cd dev
 cp .env.example .env
-./build.sh                    # API-Spec installieren, Backend-JAR, Frontend-API-Client, dann alle Images
+./build.sh                    # API-Spec + Vorlagen-Katalog installieren, Backend-JAR, Frontend-API-Client, dann alle Images
 docker compose up -d
 docker compose exec -u www-data bike-maintainer-website bm-setup    # einmalig: WordPress einrichten
 ```
